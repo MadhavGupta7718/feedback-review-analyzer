@@ -261,3 +261,28 @@ Failing Payment **NEW** (0 → 140, 96% negative) · Battery **EMERGING** (111 �
 Drift current vs previous window: sentiment PSI 0.0028 (none), theme PSI 0.5863 (significant), volume +16.4% (none), length KS 0.054 (none).
 
 **Status:** PASS — **Gate:** PROCEED
+
+---
+
+## PHASE 10 — FASTAPI BACKEND + SQLITE (2026-09-27)
+
+`backend/app/main.py` serves the precomputed, already-redacted `artifacts/analytics.db` (opened read-only per request).
+Endpoints: `/health`, `/metrics`, `/themes`, `/themes/{id}`, `/issues`, `/issues/{id}`, `/issues/{id}/evidence`, `/reviews`,
+`/reviews/{id}`, `/sentiment/validation`, `/drift`, `/data-health`, `/model-info`, `POST /product-brief`.
+Hardening: path-parameter regex validation, escaped LIKE search, bounded pagination, generic 422/500 messages (no stack traces),
+503 when the DB is missing, CORS from `CORS_ORIGINS`, every outgoing text re-passed through the redactor (`safe_text`).
+No endpoint exposes the raw dataset. `ml/brief/` added: `facts.py` (deterministic fact sheet + slots), `template.py`
+(deterministic fallback brief), `service.py` (qwen_live → qwen_precomputed → template, with recorded fallback reasons).
+
+**Failed attempt 1:** API PII test scanned the serialised JSON as one string → ISO timestamps were flagged as phone-like digit runs.
+Fix: scan each string value; skip values that are pure ISO timestamps or hex hashes.
+**Failed attempt 2:** 3 remaining false positives — `training.1600000.processed…` (round number), the executive summary's
+`2026-06-01 to 2026-08-23` (ISO dates), and `Windows-10-10.0.26200-SP0` (OS version in hardware metadata).
+Fix: leak scanner treats exact ISO dates and round numbers (`[1-9]\d{0,2}0{4,}`) as benign; the API test skips the
+`hardware_at_pipeline_run` machine-metadata subtree. A first version of the ISO-date rule allowed trailing digits, which would
+have hidden a phone number directly after a date; tightened to exact dates and a regression test added
+(`"2026-06-01 555 123 4567"` must still be flagged).
+
+Tests: `backend/tests/test_api.py` **35 passed**; full suite **112 passed**.
+
+**Status:** PASS — **Gate:** PROCEED

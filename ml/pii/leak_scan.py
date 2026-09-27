@@ -20,7 +20,9 @@ def _benign_digits(run: str) -> bool:
     digits = re.sub(r"\D", "", run)
     if len(set(digits)) == 1:  # "<3333333" hearts, "1111111"
         return True
-    if re.fullmatch(r"[1-9]0{5,}", digits):  # round numbers like 1000000
+    if re.fullmatch(r"[1-9]\d{0,2}0{4,}", digits):  # round numbers like 1000000, 1600000
+        return True
+    if re.fullmatch(r"(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])", run):  # ISO date only
         return True
     if re.fullmatch(r"(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(19|20)\d{2}", digits):  # MMDDYYYY
         return True

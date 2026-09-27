@@ -65,6 +65,8 @@ def test_no_false_positives_on_normal_reviews(text):
 
 def test_leak_scanner_ignores_benign_patterns_but_flags_real_ones():
     assert scan("singing <333333333 awww.. till 05312009, voted 1000000 times") == []
+    assert scan("from 2026-06-01 to 2026-08-23 in training.1600000.processed") == []
+    assert scan("on 2026-06-01 555 123 4567 called") == ["long_digit_run"]
     assert "long_digit_run" in scan("call 555 123 4567")
     assert "email" in scan("x@y.com")
     assert "url" in scan("see www.site.com")
