@@ -67,6 +67,13 @@ def test_whole_database_dump_has_no_pii(con):
         assert needle not in dump, needle
 
 
+def test_no_sentiment140_text_in_reports(con):
+    pii = json.loads(con.execute("SELECT data FROM reports WHERE key='pii_audit'").fetchone()[0])
+    assert "redacted_examples_for_manual_review" not in pii.get("sentiment140_batch", {})
+    src = con.execute("SELECT DISTINCT source FROM reviews").fetchall()
+    assert all("sentiment140" not in (s[0] or "").lower() for s in src)
+
+
 def test_traceability_report_passed(con):
     rep = json.loads(con.execute("SELECT data FROM reports WHERE key='traceability'").fetchone()[0])
     assert rep["status"] == "PASS" and rep["problems"] == []

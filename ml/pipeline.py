@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sqlite3
 import sys
 import time
@@ -80,7 +81,84 @@ def load_source(source: str) -> tuple[list[dict], dict]:
         info = {"name": "Sentiment140 10K balanced batch", "kind": "sentiment140", "path": "data/interim/s140_batch_10k.csv",
                 "seed": config.SEED + 1, "note": "Tweets from Apr-Jun 2009; binary labels; not product reviews."}
         return rows, info
+    if source.lower().endswith(".csv"):
+        return load_csv(Path(source))
     raise ValueError(f"unknown source {source}")
+
+
+CSV_ALIASES = {
+    "text": ("text", "review", "review_text", "content", "body", "comment", "feedback"),
+    "created_at": ("created_at", "date", "timestamp", "review_date", "time", "at", "datetime"),
+    "rating": ("rating", "score", "stars", "star_rating"),
+    "platform": ("platform", "os", "device"),
+    "app_version": ("app_version", "version", "review_created_version"),
+    "review_id": ("review_id", "id", "reviewid"),
+}
+# ambiguous dates such as 06/07/2026 are read day-first
+DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y %H:%M", "%m/%d/%Y %H:%M")
+SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+
+
+def parse_any_date(v: str | None) -> datetime | None:
+    v = (v or "").strip()
+    if not v:
+        return None
+    try:
+        dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+    except ValueError:
+        dt = None
+        for fmt in DATE_FORMATS:
+            try:
+                dt = datetime.strptime(v, fmt)
+                break
+            except ValueError:
+                continue
+    if dt is not None and dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt
+
+
+def load_csv(path: Path) -> tuple[list[dict], dict]:
+    """Any review CSV: a text column is required; timestamps are required because the radar and drift compare
+    time windows (they are never invented). Column names are matched case-insensitively against CSV_ALIASES."""
+    if not path.exists():
+        raise FileNotFoundError(f"CSV not found: {path}")
+    raw_bytes = path.read_bytes()
+    try:
+        content = raw_bytes.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        content = raw_bytes.decode("latin-1")
+    reader = csv.DictReader(content.splitlines())
+    header = {h.strip().lower(): h for h in (reader.fieldnames or [])}
+    cols = {field: next((header[a] for a in aliases if a in header), None) for field, aliases in CSV_ALIASES.items()}
+    if cols["text"] is None:
+        raise ValueError(f"no review text column; expected one of {CSV_ALIASES['text']}")
+    if cols["created_at"] is None:
+        raise ValueError(f"no timestamp column; expected one of {CSV_ALIASES['created_at']} "
+                         "(the Complaint Radar and drift need review dates)")
+    rows, seen_ids, bad_dates = [], set(), 0
+    for n, r in enumerate(reader, 1):
+        rid = (r.get(cols["review_id"]) or "").strip() if cols["review_id"] else ""
+        if not SAFE_ID.match(rid) or rid in seen_ids:
+            rid = f"U{n:06d}"
+        seen_ids.add(rid)
+        dt = parse_any_date(r.get(cols["created_at"]))
+        bad_dates += dt is None
+        rating = (r.get(cols["rating"]) or "").strip() if cols["rating"] else ""
+        try:
+            rating_v = int(round(float(rating))) if rating else None
+        except ValueError:
+            rating_v = None
+        text = r.get(cols["text"])
+        rows.append({"review_id": rid, "created_at": dt.isoformat() if dt else None, "text": text if text else None,
+                     "rating": rating_v, "platform": (r.get(cols["platform"]) or None) if cols["platform"] else None,
+                     "app_version": (r.get(cols["app_version"]) or None) if cols["app_version"] else None, "source": "csv"})
+    if not rows or bad_dates == len(rows):
+        raise ValueError("no row has a parseable date")
+    info = {"name": f"Uploaded CSV ({path.name})", "kind": "csv", "path": path.name,
+            "columns": {k: v for k, v in cols.items() if v}, "rows_without_date": bad_dates,
+            "note": "User-supplied reviews; results depend on the data and have no ground truth."}
+    return rows, info
 
 
 def parse_dt(v) -> datetime | None:
@@ -285,8 +363,8 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
                                 "current_window": [cur_start.isoformat(), end.isoformat()]},
         "weekly_vs_baseline": weekly_drift(dated, end, n_weeks, theme_ids),
         "note": ("Drift is measured on the batch's own timestamps. " +
-                 ("Synthetic timestamps: drift reflects planted patterns, not production data." if source == "synthetic"
-                  else "Sentiment140 timestamps are 2009 tweet times."))})
+                 {"synthetic": "Synthetic timestamps: drift reflects planted patterns, not production data.",
+                  "sentiment140": "Sentiment140 timestamps are 2009 tweet times."}.get(source, "Timestamps come from the uploaded CSV."))})
     trace = timer.run("traceability_audit", audit_traceability, cleaned, themes, radar)
 
     sent_counts = Counter(r["sentiment"] for r in cleaned)
@@ -336,6 +414,8 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
         f = config.ARTIFACTS_DIR / "reports" / fname
         if f.exists():
             reports[key] = json.loads(f.read_text(encoding="utf-8"))
+    if "pii_audit" in reports:  # the deployed DB must not carry Sentiment140 text, even redacted
+        reports["pii_audit"].get("sentiment140_batch", {}).pop("redacted_examples_for_manual_review", None)
     if "model_verification" in reports:  # keep the report small and free of tracebacks
         for m in reports["model_verification"].get("models", {}).values():
             m.pop("traceback", None)
@@ -344,7 +424,7 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
                                  "dtype": "float16" if device == "cuda" else "float32"},
         config.EMBEDDING_MODEL: {"revision": emb_info.get("revision"), "device": device, "purpose": "embeddings / themes", "dim": 384},
     }
-    meta = {"generated_at_utc": datetime.now(timezone.utc).isoformat(), "source": source, "dataset": dataset_info,
+    meta = {"generated_at_utc": datetime.now(timezone.utc).isoformat(), "source": dataset_info["kind"], "dataset": dataset_info,
             "seed": config.SEED, "theme_params": tres.stats["params"], "radar_params": radar["params"],
             "limit": limit, "schema_version": 1}
     target = db_path or config.ANALYTICS_DB
@@ -355,7 +435,7 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", default="synthetic", choices=["synthetic", "sentiment140"])
+    ap.add_argument("--source", default="synthetic", help="synthetic | sentiment140 | path to a review CSV")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--db", type=Path, default=None)
     ap.add_argument("--device", default=None, choices=[None, "cuda", "cpu"])
