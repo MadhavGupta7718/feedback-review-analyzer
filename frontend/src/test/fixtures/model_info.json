@@ -1,0 +1,131 @@
+{
+ "pipeline_models": {
+  "cardiffnlp/twitter-roberta-base-sentiment-latest": {
+   "revision": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+   "device": "cuda",
+   "purpose": "sentiment",
+   "batch_size": 64,
+   "dtype": "float16"
+  },
+  "sentence-transformers/all-MiniLM-L6-v2": {
+   "revision": null,
+   "device": "cuda",
+   "purpose": "embeddings / themes",
+   "dim": 384
+  }
+ },
+ "verification": {
+  "cardiffnlp/twitter-roberta-base-sentiment-latest": {
+   "revision": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+   "disk_gb": 0.468,
+   "load_seconds": 14.69,
+   "checks": {
+    "labels_valid": true,
+    "probabilities_sum_to_1": true,
+    "positive_example_positive": true,
+    "negative_example_negative": true
+   },
+   "state": "LOADED"
+  },
+  "sentence-transformers/all-MiniLM-L6-v2": {
+   "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+   "disk_gb": 0.085,
+   "load_seconds": 1.85,
+   "embedding_dim": 384,
+   "similarity": {
+    "battery drains quickly ~ battery dies fast": 0.6757,
+    "battery drains quickly ~ payment failed": -0.0087
+   },
+   "checks": {
+    "dim_384": true,
+    "semantic_ordering": true,
+    "reproducible_across_batch_sizes": true
+   },
+   "state": "LOADED"
+  },
+  "Qwen/Qwen2.5-3B-Instruct": {
+   "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+   "disk_gb": 5.759,
+   "plan": {
+    "device": "cuda",
+    "dtype": "bfloat16",
+    "quantization": "bnb-4bit-nf4",
+    "reason": "4.9 GB free VRAM < 7.2 GB needed for fp16; using 4-bit NF4 quantization"
+   },
+   "load_seconds": 20.71,
+   "gpu_memory_allocated_gb": 1.93,
+   "generation_seconds": 13.77,
+   "checks": {
+    "non_empty": true,
+    "on_gpu": true,
+    "no_invented_numbers": true,
+    "no_921": true,
+    "no_causal_language": true
+   },
+   "state": "LOADED"
+  },
+  "missing-model-handling": {
+   "state": "n/a",
+   "checks": {
+    "raises_not_installed": true
+   }
+  }
+ },
+ "verification_status": "PASS",
+ "verification_offline": true,
+ "performance": {
+  "stages": {
+   "load": {
+    "seconds": 0.321,
+    "rss_mb": 560.2
+   },
+   "validate_redact_clean": {
+    "seconds": 3.413,
+    "rss_mb": 571.3
+   },
+   "load_sentiment_model": {
+    "seconds": 13.445,
+    "rss_mb": 839.4
+   },
+   "sentiment": {
+    "seconds": 10.624,
+    "rss_mb": 1323.1
+   },
+   "embeddings": {
+    "seconds": 0.019,
+    "rss_mb": 1334.8
+   },
+   "themes": {
+    "seconds": 7.465,
+    "rss_mb": 1365.7
+   },
+   "complaint_radar": {
+    "seconds": 0.081,
+    "rss_mb": 1366.3
+   },
+   "drift": {
+    "seconds": 0.081,
+    "rss_mb": 1366.5
+   },
+   "traceability_audit": {
+    "seconds": 0.251,
+    "rss_mb": 1366.5
+   }
+  },
+  "total_seconds": 35.92,
+  "peak_rss_mb": 1366.5,
+  "device": "cuda",
+  "n_reviews": 10104,
+  "sentiment_reviews_per_sec": 952.1,
+  "peak_gpu_mem_gb": 0.538
+ },
+ "brief_engine": {
+  "brief_mode": "auto",
+  "qwen_installed": true,
+  "cuda_available": true,
+  "qwen_loaded": false,
+  "last_error": null,
+  "live_generation_possible": true
+ },
+ "precomputed_qwen_brief": false
+}

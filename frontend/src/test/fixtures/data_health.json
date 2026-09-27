@@ -1,0 +1,132 @@
+{
+ "dataset": {
+  "name": "Synthetic Nimbus app reviews",
+  "kind": "synthetic",
+  "path": "data/raw/synthetic_reviews.csv",
+  "seed": 42,
+  "note": "Deterministic synthetic data with planted patterns. Not real customer reviews."
+ },
+ "input_rows": 10192,
+ "processed_reviews": 10104,
+ "rejected": {
+  "null_text": 5,
+  "empty_text": 3
+ },
+ "ingestion_duplicates_removed": 80,
+ "identical_text_rows_kept": 2970,
+ "missing_timestamps": 0,
+ "mojibake_repaired": 6,
+ "html_entities_decoded": 0,
+ "pii_redactions": {
+  "USER": 72,
+  "ACCOUNT_ID": 76,
+  "ORDER_ID": 71,
+  "CUSTOMER_ID": 85,
+  "PHONE": 67,
+  "EMAIL": 71,
+  "CARD": 79,
+  "URL": 43,
+  "PERSON": 64
+ },
+ "rows_with_pii": 628,
+ "drift": {
+  "sentiment": {
+   "value": 0.0028,
+   "status": "none"
+  },
+  "theme": {
+   "value": 0.5863,
+   "status": "significant"
+  },
+  "volume": {
+   "value": 0.1642,
+   "status": "none"
+  },
+  "review_length": {
+   "value": 0.0538,
+   "status": "none"
+  }
+ },
+ "theme_stats": {
+  "params": {
+   "pca_components": 20,
+   "min_cluster_size": 40,
+   "min_samples": 10,
+   "cluster_selection_method": "eom",
+   "merge_threshold": 0.65,
+   "noise_assign_threshold": 0.6,
+   "n_keywords": 8,
+   "n_representatives": 5,
+   "seed": 42
+  },
+  "n_reviews": 10104,
+  "n_micro_clusters": 50,
+  "n_clusters": 27,
+  "hdbscan_noise_points": 1535,
+  "hdbscan_noise_fraction": 0.1519,
+  "reassigned_by_nearest_centroid": 1272,
+  "unassigned": 263,
+  "unassigned_fraction": 0.026,
+  "cluster_sizes": [
+   1514,
+   1546,
+   714,
+   701,
+   610,
+   465,
+   372,
+   613,
+   434,
+   288,
+   256,
+   255,
+   280,
+   253,
+   227,
+   212,
+   163,
+   153,
+   152,
+   118,
+   95,
+   88,
+   82,
+   71,
+   68,
+   52,
+   59
+  ]
+ },
+ "traceability": {
+  "links_checked": 213,
+  "problems": [],
+  "reviews_with_residual_pii_pattern": 0,
+  "status": "PASS"
+ },
+ "pii_audit": {
+  "overall_recall": 1.0,
+  "recall_by_type": {
+   "account_id": "76/76",
+   "card": "79/79",
+   "customer_id": "85/85",
+   "email": "71/71",
+   "handle": "72/72",
+   "order_id": "71/71",
+   "person": "64/64",
+   "phone": "67/67",
+   "url": "43/43"
+  },
+  "false_positive_row_rate": 0.0
+ },
+ "sentiment140_validation": {
+  "rows": 1600000,
+  "status": "PASS",
+  "label_distribution": {
+   "0": 800000,
+   "4": 800000
+  },
+  "duplicate_ids": 1685,
+  "date_min": "2009-04-06T22:19:45",
+  "date_max": "2009-06-25T10:28:31"
+ }
+}

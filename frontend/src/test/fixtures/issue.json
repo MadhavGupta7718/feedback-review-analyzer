@@ -1,0 +1,87 @@
+{
+ "theme_id": "theme_019",
+ "name": "Failing Payment",
+ "status": "NEW",
+ "current_mentions": 140,
+ "previous_mentions": 0,
+ "growth_pct": null,
+ "growth_label": "NEW",
+ "negative_mentions_current": 135,
+ "negative_ratio": 0.9643,
+ "negative_ratio_all": 0.9671,
+ "total_mentions": 152,
+ "acceleration_pp": null,
+ "trend": "rising",
+ "weekly_counts": [
+  1,
+  1,
+  1,
+  1,
+  4,
+  1,
+  2,
+  1,
+  0,
+  0,
+  46,
+  94
+ ],
+ "evidence_review_ids": [
+  "R09905",
+  "R08598",
+  "R09580",
+  "R09760",
+  "R10077"
+ ],
+ "priority": 540.0,
+ "calculation": {
+  "window": {
+   "current": [
+    "2026-08-09T23:56:55",
+    "2026-08-23T23:56:55"
+   ],
+   "previous": [
+    "2026-07-26T23:56:55",
+    "2026-08-09T23:56:55"
+   ]
+  },
+  "growth": "previous = 0 -> growth undefined, classified NEW",
+  "negative_ratio": "135 / 140 = 96.4%",
+  "priority": "135 x 4.00 = 540.0",
+  "thresholds": {
+   "min_current_mentions": 30,
+   "min_growth_pct": 50.0,
+   "min_negative_ratio": 0.5,
+   "min_evidence_reviews": 3
+  }
+ },
+ "associations": [],
+ "reasons": [
+  "0 mentions in previous window, 140 in current window (>= 30)"
+ ],
+ "formula": "priority = current_negative_mentions x (1 + clip(growth_pct / 100, 0, 3.0))  [NEW: x (1 + 3.0)]",
+ "window": {
+  "current_start": "2026-08-09T23:56:55",
+  "end": "2026-08-23T23:56:55",
+  "previous_start": "2026-07-26T23:56:55",
+  "current_reviews": 1893,
+  "previous_reviews": 1626,
+  "has_previous_window": true
+ },
+ "theme": {
+  "theme_id": "theme_019",
+  "name": "Failing Payment",
+  "keywords": [
+   "pay",
+   "payment",
+   "error",
+   "failed",
+   "checkout",
+   "code",
+   "different cards",
+   "tried different"
+  ],
+  "size": 152,
+  "coherence": 0.7494
+ }
+}

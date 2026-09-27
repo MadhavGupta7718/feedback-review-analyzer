@@ -286,3 +286,46 @@ have hidden a phone number directly after a date; tightened to exact dates and a
 Tests: `backend/tests/test_api.py` **35 passed**; full suite **112 passed**.
 
 **Status:** PASS — **Gate:** PROCEED
+
+Note (user instruction, 2026-09-27 20:31 IST): from this point commits are kept local only (no push).
+
+---
+
+## PHASE 11 — REACT DASHBOARD (2026-09-27)
+
+`frontend/` — React 19 + Vite 8 + TypeScript 5.9 + Recharts 3 + React Router 7. Pages: Executive Overview, Themes (search/sort,
+detail panel with weekly trend, per-version breakdown, representative reviews), Complaint Radar (status filter, **View why**
+panel: reasons, calculation strings, thresholds, formula, weekly bars with the current window highlighted, segment associations,
+current-window evidence reviews), Evidence (theme / sentiment / text filters, pagination, review drawer with probabilities),
+Sentiment Validation (three scorings, confusion matrices, throughput, synthetic 3-class with neutral-recall caveat, methodology),
+Data Health (ingestion counts, PII by type + recall, traceability audit, drift table with theme names, weekly PSI chart with
+thresholds, model verification), Product Brief (engine selector, generate button, generation-path badge, fallback reasons,
+evidence quotes linked to review IDs). Loading / error (with retry) / empty states everywhere; API base from `VITE_API_BASE_URL`.
+Pages are lazy-loaded (largest chunk 359 kB instead of one 715 kB bundle). `vercel.json` adds SPA rewrites + security headers.
+
+Tests (`frontend/src/test/app.test.tsx`, Vitest + Testing Library, fixtures generated from the real API by
+`scripts/dump_api_samples.py --fixtures`): **18 passed** — headline numbers, API unreachable, 503 message, VIEW WHY shows the
+calculation/reasons/evidence, evidence belongs to the theme, theme detail, search filter, evidence query parameters, review drawer,
+three sentiment scorings, data health, brief shows generation path + request body, fallback reasons, and a PII-pattern scan of the
+rendered text of five pages. `tsc -b` clean; `vite build` OK.
+
+**Failed attempt 1:** Vitest forks pool timed out starting its worker on Windows ("Timeout waiting for worker to respond").
+Fix: `pool: "threads"`.
+**Failed attempt 2:** first test failed after lazy-loading pages (cold dynamic import > 1 s default wait). Fix: Testing Library
+`asyncUtilTimeout` 5 s.
+**Failed attempt 3 (browser):** a top-level `Suspense` blanked the whole app (sidebar included) while a page chunk loaded.
+Fix: `Suspense` moved inside the layout around `<Outlet/>`.
+**Bug found while typing responses:** `/issues` returns `rules` as a text block, not a dict; the type and the rendering were corrected.
+
+Browser verification (local backend on :8000 + Vite on :5173, screenshots taken): Overview (KPIs, donut, emerging list, top
+complaints chart), Radar → View why for Failing Payment (0 → 140, `135 x 4.00 = 540.0`, W11–W12 highlighted, evidence reviews),
+Themes (Battery detail: rising weekly curve, v5.3 peak, representative reviews), Sentiment Validation, Data Health all rendered
+with live data. The in-browser click on "Generate product brief" was blocked by the agent's tool policy; the same request was
+verified over HTTP (`POST /product-brief` → 200, `access-control-allow-origin: http://127.0.0.1:5173`, `generation_path: template`)
+and by the component tests.
+
+Observation: Failing Payment has 140 of 152 mentions on app v5.3, but the radar reports no segment association. This is correct:
+in the synthetic data the version is a function of time, so every current-window review is v5.3 and there is no within-window skew.
+The per-version chart on the Themes page still shows the concentration.
+
+**Status:** PASS WITH KNOWN LIMITATION (brief button click verified by tests + HTTP, not by in-browser click) — **Gate:** PROCEED

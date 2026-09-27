@@ -1,0 +1,206 @@
+{
+ "theme_id": "theme_019",
+ "name": "Failing Payment",
+ "keywords": [
+  "pay",
+  "payment",
+  "error",
+  "failed",
+  "checkout",
+  "code",
+  "different cards",
+  "tried different"
+ ],
+ "size": 152,
+ "core_size": 119,
+ "coherence": 0.7494,
+ "negative_count": 147,
+ "neutral_count": 5,
+ "positive_count": 0,
+ "negative_pct": 96.7,
+ "weekly_counts": [
+  1,
+  1,
+  1,
+  1,
+  4,
+  1,
+  2,
+  1,
+  0,
+  0,
+  46,
+  94
+ ],
+ "is_complaint": true,
+ "avg_rating": 1.41,
+ "radar_status": "NEW",
+ "growth_pct": null,
+ "growth_label": "NEW",
+ "priority": 540.0,
+ "representative_reviews": [
+  {
+   "review_id": "R09905",
+   "created_at": "2026-08-22T17:18:47",
+   "rating": 2,
+   "platform": "ios",
+   "app_version": "5.3",
+   "text": "Ugh. Payment keeps failing at checkout. Tried three different cards. Uninstalling until it's fixed.",
+   "sentiment": "negative",
+   "confidence": 0.924,
+   "theme_id": "theme_019",
+   "theme_assignment": "cluster",
+   "pii_redactions": 0,
+   "source": "synthetic",
+   "theme_name": "Failing Payment"
+  },
+  {
+   "review_id": "R08598",
+   "created_at": "2026-08-13T07:22:56",
+   "rating": 1,
+   "platform": "android",
+   "app_version": "5.3",
+   "text": "Ugh. Payment keeps failing at checkout. Tried three different cards. 1 star until resolved.",
+   "sentiment": "negative",
+   "confidence": 0.9164,
+   "theme_id": "theme_019",
+   "theme_assignment": "cluster",
+   "pii_redactions": 0,
+   "source": "synthetic",
+   "theme_name": "Failing Payment"
+  },
+  {
+   "review_id": "R09580",
+   "created_at": "2026-08-20T10:34:30",
+   "rating": 2,
+   "platform": "ios",
+   "app_version": "5.3",
+   "text": "Ugh. Payment was taken but the app says it failed. Tried three different cards. Very frustrating!!",
+   "sentiment": "negative",
+   "confidence": 0.9374,
+   "theme_id": "theme_019",
+   "theme_assignment": "cluster",
+   "pii_redactions": 0,
+   "source": "synthetic",
+   "theme_name": "Failing Payment"
+  },
+  {
+   "review_id": "R09760",
+   "created_at": "2026-08-21T18:04:20",
+   "rating": 1,
+   "platform": "ios",
+   "app_version": "5.3",
+   "text": "Payment was taken but the app says it failed. Tried three different cards. 1 star until resolved. \ud83d\udd0b\ud83d\udc80",
+   "sentiment": "negative",
+   "confidence": 0.8672,
+   "theme_id": "theme_019",
+   "theme_assignment": "cluster",
+   "pii_redactions": 0,
+   "source": "synthetic",
+   "theme_name": "Failing Payment"
+  },
+  {
+   "review_id": "R10077",
+   "created_at": "2026-08-23T21:35:39",
+   "rating": 1,
+   "platform": "ios",
+   "app_version": "5.3",
+   "text": "Not happy. apple pay and google pay both fail at checkout now. Tried three different cards. my [ACCOUNT_ID]. Please fix this asap.",
+   "sentiment": "negative",
+   "confidence": 0.9381,
+   "theme_id": "theme_019",
+   "theme_assignment": "cluster",
+   "pii_redactions": 1,
+   "source": "synthetic",
+   "theme_name": "Failing Payment"
+  }
+ ],
+ "radar": {
+  "theme_id": "theme_019",
+  "name": "Failing Payment",
+  "status": "NEW",
+  "current_mentions": 140,
+  "previous_mentions": 0,
+  "growth_pct": null,
+  "growth_label": "NEW",
+  "negative_mentions_current": 135,
+  "negative_ratio": 0.9643,
+  "negative_ratio_all": 0.9671,
+  "total_mentions": 152,
+  "acceleration_pp": null,
+  "trend": "rising",
+  "weekly_counts": [
+   1,
+   1,
+   1,
+   1,
+   4,
+   1,
+   2,
+   1,
+   0,
+   0,
+   46,
+   94
+  ],
+  "evidence_review_ids": [
+   "R09905",
+   "R08598",
+   "R09580",
+   "R09760",
+   "R10077"
+  ],
+  "priority": 540.0,
+  "calculation": {
+   "window": {
+    "current": [
+     "2026-08-09T23:56:55",
+     "2026-08-23T23:56:55"
+    ],
+    "previous": [
+     "2026-07-26T23:56:55",
+     "2026-08-09T23:56:55"
+    ]
+   },
+   "growth": "previous = 0 -> growth undefined, classified NEW",
+   "negative_ratio": "135 / 140 = 96.4%",
+   "priority": "135 x 4.00 = 540.0",
+   "thresholds": {
+    "min_current_mentions": 30,
+    "min_growth_pct": 50.0,
+    "min_negative_ratio": 0.5,
+    "min_evidence_reviews": 3
+   }
+  },
+  "associations": [],
+  "reasons": [
+   "0 mentions in previous window, 140 in current window (>= 30)"
+  ]
+ },
+ "segments": {
+  "app_version": [
+   {
+    "value": "5.0",
+    "n": 4
+   },
+   {
+    "value": "5.1",
+    "n": 8
+   },
+   {
+    "value": "5.3",
+    "n": 140
+   }
+  ],
+  "platform": [
+   {
+    "value": "android",
+    "n": 79
+   },
+   {
+    "value": "ios",
+    "n": 73
+   }
+  ]
+ }
+}

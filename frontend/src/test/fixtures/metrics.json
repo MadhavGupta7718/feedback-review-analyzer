@@ -1,0 +1,65 @@
+{
+ "overview": {
+  "total_reviews": 10104,
+  "sentiment_counts": {
+   "positive": 4047,
+   "negative": 5464,
+   "neutral": 593
+  },
+  "sentiment_pct": {
+   "negative": 54.1,
+   "neutral": 5.9,
+   "positive": 40.1
+  },
+  "n_themes": 27,
+  "n_complaint_themes": 15,
+  "top_complaint": {
+   "theme_id": "theme_002",
+   "name": "Crashes Phone",
+   "negative_count": 1424,
+   "size": 1546,
+   "negative_pct": 92.1
+  },
+  "emerging": [
+   {
+    "theme_id": "theme_019",
+    "name": "Failing Payment",
+    "status": "NEW",
+    "current_mentions": 140,
+    "previous_mentions": 0,
+    "growth_pct": null,
+    "growth_label": "NEW",
+    "negative_ratio": 0.9643,
+    "priority": 540.0
+   },
+   {
+    "theme_id": "theme_005",
+    "name": "Battery",
+    "status": "EMERGING",
+    "current_mentions": 243,
+    "previous_mentions": 111,
+    "growth_pct": 118.92,
+    "growth_label": "+119%",
+    "negative_ratio": 0.856,
+    "priority": 455.35
+   }
+  ],
+  "pii_redactions_total": 628,
+  "drift_status": "significant",
+  "date_range": [
+   "2026-06-01T00:10:45",
+   "2026-08-23T23:56:55"
+  ],
+  "avg_rating": 2.68
+ },
+ "dataset": {
+  "name": "Synthetic Nimbus app reviews",
+  "kind": "synthetic",
+  "path": "data/raw/synthetic_reviews.csv",
+  "seed": 42,
+  "note": "Deterministic synthetic data with planted patterns. Not real customer reviews."
+ },
+ "generated_at_utc": "2026-09-27T14:39:39.437064+00:00",
+ "pipeline_seconds": 35.92,
+ "device": "cuda"
+}

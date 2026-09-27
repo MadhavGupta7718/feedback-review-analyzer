@@ -1,0 +1,20 @@
+{
+ "review_id": "R10098",
+ "created_at": "2026-08-23T23:56:55",
+ "rating": 2,
+ "platform": "android",
+ "app_version": "5.3",
+ "text": "Support keeps sending the same copy paste answer. Very disappointing service. Very frustrating!!",
+ "sentiment": "negative",
+ "confidence": 0.9561,
+ "theme_id": "theme_009",
+ "theme_assignment": "cluster",
+ "pii_redactions": 0,
+ "source": "synthetic",
+ "theme_name": "Support Service",
+ "p_negative": 0.9561,
+ "p_neutral": 0.0389,
+ "p_positive": 0.0049,
+ "theme_similarity": 0.771,
+ "used_as_evidence": []
+}

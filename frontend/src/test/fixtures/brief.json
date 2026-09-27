@@ -1,0 +1,52 @@
+{
+ "generation_path": "template",
+ "generated_at_utc": "2026-09-27T15:04:32.946829+00:00",
+ "executive_summary": "Across 10,104 reviews (2026-06-01 to 2026-08-23), 54.1% are negative, 5.9% neutral and 40.1% positive, grouped into 27 themes. Emerging complaints in the latest 14-day window: Failing Payment (new: 140 mentions vs 0); Battery (+119%, 111 to 243 mentions). The largest complaint theme by negative volume is Crashes Phone (1,424 negative of 1,546 mentions). Declining: Login Password (-46%).",
+ "top_complaints": [
+  "Crashes Phone: 1,424 negative of 1,546 mentions (92.1% negative), window change -1%.",
+  "Login Password: 632 negative of 714 mentions (88.5% negative), window change -46%.",
+  "Delivery Tracking: 625 negative of 701 mentions (89.2% negative), window change -12%.",
+  "Battery: 535 negative of 610 mentions (87.7% negative), window change +119%.",
+  "Load Fast: 495 negative of 613 mentions (80.8% negative), window change +21%."
+ ],
+ "emerging_complaints": [
+  "Failing Payment [NEW]: 140 mentions in the current window, 0 in the previous window; 96.4% negative; trend rising.",
+  "Battery [EMERGING]: 111 -> 243 mentions (+119%); 85.6% negative; trend rising. Calculation: (243 - 111) / 111 x 100 = 118.92%."
+ ],
+ "evidence": [
+  {
+   "theme": "Failing Payment",
+   "review_id": "R09905",
+   "text": "Ugh. Payment keeps failing at checkout. Tried three different cards. Uninstalling until it's fixed."
+  },
+  {
+   "theme": "Failing Payment",
+   "review_id": "R08598",
+   "text": "Ugh. Payment keeps failing at checkout. Tried three different cards. 1 star until resolved."
+  },
+  {
+   "theme": "Battery",
+   "review_id": "R09877",
+   "text": "Not happy. the app drains my battery like crazy Happens even when I'm not using it. Uninstalling until it's fixed."
+  },
+  {
+   "theme": "Battery",
+   "review_id": "R08798",
+   "text": "Not happy. the app eats battery nonstop, it shows 40% usage in settings Never had this problem before."
+  }
+ ],
+ "possible_associations": [
+  "No segment (app version / platform) shows a notable association with the emerging complaints."
+ ],
+ "suggested_investigation_areas": [
+  "Review the 140 current-window Failing Payment reports (evidence IDs R09905, R08598, R09580) to confirm the pattern before prioritising a fix.",
+  "Review the 243 current-window Battery reports (evidence IDs R09877, R08798, R08495) to confirm the pattern before prioritising a fix.",
+  "Feedback distribution changed between windows (theme drift); re-check theme definitions if the change persists."
+ ],
+ "caveats": [
+  "Statistics describe feedback volume and sentiment; they do not establish causes.",
+  "All quotes are redacted verbatims from the analysed batch.",
+  "This batch is synthetic demonstration data, not real customer feedback.",
+  "Sentiment model accuracy on the labelled Sentiment140 sample: 76.5% (binary evaluation)."
+ ]
+}
