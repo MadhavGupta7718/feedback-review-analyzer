@@ -326,5 +326,7 @@ export interface ProductBrief {
   caveats: string[];
   fallback_reasons?: string[];
   model?: string;
-  validation?: { passed: boolean; errors: string[]; checks?: Record<string, boolean> };
+  model_revision?: string;
+  written_by_model?: string[];
+  validation?: { passed: boolean; errors: string[]; checks?: Record<string, boolean>; attempts?: number | unknown[] };
 }

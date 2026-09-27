@@ -148,6 +148,37 @@ def test_product_brief_template(client):
         assert client.get(f"/reviews/{rid}").status_code == 200  # no fabricated evidence
 
 
+def test_product_brief_precomputed_qwen_is_served_without_live_model(client, monkeypatch):
+    monkeypatch.setenv("BRIEF_MODE", "precomputed")
+    b = client.post("/product-brief", json={"engine": "auto"}).json()
+    if b["generation_path"] == "template":
+        pytest.skip("no precomputed Qwen brief in this database (run scripts/generate_brief.py)")
+    assert b["generation_path"] == "qwen_precomputed"
+    assert any("BRIEF_MODE=precomputed" in r for r in b["fallback_reasons"])
+    assert b["validation"]["passed"] is True
+    assert_no_pii(b)
+    t = client.post("/product-brief", json={"engine": "template"}).json()
+    for k in ("top_complaints", "emerging_complaints", "evidence", "caveats"):
+        assert b[k] == t[k]  # only the prose sections come from the model
+    nums = set(re.findall(r"\d+(?:,\d{3})*(?:\.\d+)?%?", b["executive_summary"]))
+    m = client.get("/metrics").json()["overview"]
+    issues = client.get("/issues").json()["issues"]
+    themes = client.get("/themes").json()["themes"]
+    known = {f"{m['total_reviews']:,}", f"{m['sentiment_pct']['negative']:g}%", "14"}
+    for i in issues:
+        known |= {f"{i['current_mentions']:,}", f"{i['previous_mentions']:,}", f"{round(i['negative_ratio'] * 100, 1):g}%", i["growth_label"].lstrip("+-")}
+    for t_ in themes:
+        known |= {f"{t_['negative_count']:,}", f"{t_['size']:,}", f"{t_['negative_pct']:g}%"}
+    assert nums <= known, nums - known
+
+
+def test_product_brief_template_mode_disables_qwen(client, monkeypatch):
+    monkeypatch.setenv("BRIEF_MODE", "template")
+    b = client.post("/product-brief", json={"engine": "auto"}).json()
+    assert b["generation_path"] == "template"
+    assert any("BRIEF_MODE=template" in r for r in b["fallback_reasons"])
+
+
 def test_product_brief_invalid_engine(client):
     assert client.post("/product-brief", json={"engine": "gpt-9"}).status_code == 422
     assert client.post("/product-brief", content="not json", headers={"Content-Type": "application/json"}).status_code == 422

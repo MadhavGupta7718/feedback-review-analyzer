@@ -4,6 +4,9 @@ Paths
   qwen_live         Qwen2.5-3B generated it now on this machine (requires installed model + suitable hardware)
   qwen_precomputed  a Qwen brief generated offline by scripts/generate_brief.py and stored in the DB
   template          deterministic template (always available; the fallback)
+
+BRIEF_MODE (env): auto = live Qwen if possible, else precomputed, else template;
+                  precomputed = never run Qwen live; template = never use Qwen output.
 """
 from __future__ import annotations
 
@@ -35,7 +38,7 @@ def qwen_status() -> dict:
         cuda = False
     return {"brief_mode": mode, "qwen_installed": installed, "cuda_available": cuda,
             "qwen_loaded": _writer is not None, "last_error": _writer_error,
-            "live_generation_possible": mode != "template" and installed and cuda}
+            "live_generation_possible": mode == "auto" and installed and cuda}
 
 
 def _get_writer():
@@ -62,21 +65,29 @@ def precomputed(db_path: Path) -> dict | None:
 def generate_brief(db_path: Path, engine: str = "auto") -> dict:
     facts = build_facts(db_path)
     reasons: list[str] = []
-    if engine in ("auto", "qwen"):
-        st = qwen_status()
+    st = qwen_status() if engine in ("auto", "qwen") else None
+    if st and st["brief_mode"] == "template":
+        reasons.append("BRIEF_MODE=template: Qwen output disabled")
+    elif st:
         if st["live_generation_possible"]:
             with _lock:
                 writer = _get_writer()
                 if writer is not None:
-                    res = writer.write(facts)
+                    try:
+                        res = writer.write(facts)
+                    except Exception as exc:  # noqa: BLE001
+                        res = {"ok": False, "error": f"{type(exc).__name__}"}
                     if res["ok"]:
                         return {**res["brief"], "generation_path": "qwen_live", "validation": res["validation"]}
-                    reasons.append("Qwen output failed validation: " + "; ".join(res["validation"]["errors"][:3]))
+                    if "error" in res:
+                        reasons.append(f"Qwen generation raised {res['error']}")
+                    else:
+                        reasons.append("Qwen output failed validation: " + "; ".join(res["validation"]["errors"][:3]))
                 else:
                     reasons.append(f"Qwen could not be loaded: {_writer_error}")
         else:
             reasons.append("live Qwen unavailable (" + ", ".join(
-                k for k, v in (("BRIEF_MODE=template", st["brief_mode"] == "template"), ("model not installed", not st["qwen_installed"]),
+                k for k, v in (("BRIEF_MODE=precomputed", st["brief_mode"] == "precomputed"), ("model not installed", not st["qwen_installed"]),
                                ("no CUDA GPU", not st["cuda_available"])) if v) + ")")
         pre = precomputed(db_path)
         if pre is not None:

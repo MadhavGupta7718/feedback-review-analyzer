@@ -76,7 +76,7 @@ export function ProductBrief() {
             </span>
           )}
         </div>
-        {busy && engine !== "template" && <p className="muted small">Live generation on the local GPU can take 20–60 seconds the first time (model load).</p>}
+        {busy && engine !== "template" && <p className="muted small">Live generation on a laptop GPU can take one to three minutes (model load, generation and up to one validated retry). Hosts without a GPU return the stored brief immediately.</p>}
       </Card>
 
       {error && <ErrorState message={error} onRetry={generate} />}
@@ -91,7 +91,12 @@ export function ProductBrief() {
             </span>
           }
         >
-          <p className="muted small">{path.detail}</p>
+          <p className="muted small">
+            {path.detail}
+            {brief.written_by_model && ` Model-written sections: ${brief.written_by_model.map((s) => s.replace(/_/g, " ")).join(", ")}; every other section is deterministic.`}
+            {brief.validation?.attempts != null &&
+              ` Attempts: ${Array.isArray(brief.validation.attempts) ? brief.validation.attempts.length : brief.validation.attempts}.`}
+          </p>
           {brief.fallback_reasons && brief.fallback_reasons.length > 0 && (
             <div className="banner banner-warn" role="note">
               <strong>Fallback used.</strong> {brief.fallback_reasons.join(" · ")}

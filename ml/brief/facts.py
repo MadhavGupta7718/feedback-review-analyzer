@@ -57,6 +57,7 @@ def build_facts(db_path: Path) -> dict:
                              "negative_pct": round(it["negative_ratio"] * 100, 1), "trend": it["trend"],
                              "evidence_review_ids": it["evidence_review_ids"], "quotes": quotes(it["evidence_review_ids"]),
                              "associations": [a["statement"] for a in it["associations"]],
+                             "keywords": themes.get(it["theme_id"], {}).get("keywords", [])[:6],
                              "calculation": it["calculation"]["growth"]})
         complaints = sorted((t for t in themes.values() if t["is_complaint"]), key=lambda t: -t["negative_count"])[:MAX_TOP]
         top = []
@@ -68,8 +69,14 @@ def build_facts(db_path: Path) -> dict:
                         "negative_count": t["negative_count"], "negative_pct": t["negative_pct"],
                         "growth_label": t.get("growth_label", "n/a"), "status": t.get("radar_status"),
                         "representative_ids": t["representative_ids"][:3]})
-        declining = [{"theme_id": i["theme_id"], "name": i["name"], "growth_label": i["growth_label"]}
-                     for i in issues if i["status"] == "DECLINING"]
+        declining = [{"key": f"D{k}", "theme_id": i["theme_id"], "name": i["name"], "growth_label": i["growth_label"],
+                      "current": i["current_mentions"], "previous": i["previous_mentions"]}
+                     for k, i in enumerate([i for i in issues if i["status"] == "DECLINING"][:MAX_TOP], start=1)]
+        for d in declining:
+            slots.update({f"{d['key']}.name": d["name"], f"{d['key']}.growth": d["growth_label"],
+                          f"{d['key']}.current": d["current"], f"{d['key']}.previous": d["previous"]})
+        radar_meta = _report(con, "radar_meta") or {}
+        slots["window_days"] = (radar_meta.get("params") or {}).get("window_days", 14)
         dm = drift["current_vs_previous"]["metrics"] if drift else {}
         facts = {
             "dataset": meta.get("dataset", {}),
@@ -99,7 +106,7 @@ def facts_json_for_llm(facts: dict) -> str:
         "emerging": [{"key": e["key"], "status": e["status"], "trend": e["trend"], "evidence_review_ids": e["evidence_review_ids"][:3],
                       "example_quotes": [q["text"] for q in e["quotes"]], "associations": e["associations"]} for e in facts["emerging"]],
         "top_complaints": [{"key": c["key"]} for c in facts["top_complaints"]],
-        "declining": [d["name"] for d in facts["declining"]],
+        "declining": [{"key": d["key"]} for d in facts["declining"]],
         "drift_overall": facts["drift_overall"],
     }
     return json.dumps(view, ensure_ascii=False)

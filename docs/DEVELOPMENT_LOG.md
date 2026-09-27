@@ -329,3 +329,59 @@ in the synthetic data the version is a function of time, so every current-window
 The per-version chart on the Themes page still shows the concentration.
 
 **Status:** PASS WITH KNOWN LIMITATION (brief button click verified by tests + HTTP, not by in-browser click) — **Gate:** PROCEED
+
+---
+
+## PHASE 12 — QWEN PRODUCT BRIEF (2026-09-27)
+
+Design (motivated by the Phase 2 finding that Qwen kept the numbers but reversed "50 → 142" into "142 to 50"):
+- `ml/brief/qwen_writer.py` — Qwen2.5-3B-Instruct (bnb 4-bit NF4 on the RTX 4050, 1.92 GB VRAM, loaded with
+  `local_files_only`) writes **only** the executive summary and the investigation areas. It never sees numeric values:
+  the prompt lists slot names with their meaning (`{E1.current} = mentions in the current window`), theme names,
+  keywords and one redacted quote per emerging theme with digits masked. The prompt is leak-scanned before generation.
+  Top complaints, emerging list, evidence quotes, associations and caveats remain the deterministic template output.
+- `ml/brief/validator.py` — rejects: missing sections, raw digits outside slots (even correct ones), unknown slots,
+  review IDs not in the fact sheet, a sentence mixing one theme's name with another theme's numbers, reversed
+  `from {Ek.current} to {Ek.previous}`, decrease wording for NEW/EMERGING or increase wording for DECLINING themes,
+  causal words, certainty words, invented quoted theme names, missing emerging themes, leak-scanner hits. Then
+  substitutes slot values deterministically. One retry with targeted feedback, then fallback.
+- `ml/brief/service.py` — `BRIEF_MODE` now `auto | precomputed | template` (previously `template` still served a
+  stored Qwen brief, which contradicted its name). Exceptions during generation now fall back instead of returning 500.
+- `scripts/generate_brief.py` — generates on the GPU and stores the validated brief as report `qwen_brief`
+  (served on CPU-only hosts as `qwen_precomputed`). Run log: `artifacts/reports/qwen_brief_run.json`.
+
+**Failed attempt 1:** first prompt without an explicit structure → summary paraphrased "payment failures" instead of
+naming the theme (coverage check failed) and used "root causes" (causal check); the retry repeated the same text.
+Fix: prompt ends with a per-theme checklist built from the real slots; retry message names the exact missing slots /
+forbidden words; "investigate/identify … causes" allowed in investigation bullets only (summary stays strict).
+**Failed attempt 2:** "to confirm the pattern" (the template's own hedged wording) was flagged as certainty.
+Fix: only "confirms/confirmed" count as certainty claims.
+**Failed attempt 3:** live model test compared numbers with a regex that captured "140," (trailing comma) — a test bug;
+regex fixed.
+**Failed attempt 4:** first live API call returned 500: the running server had imported the old fact-sheet module
+(stale process) while `qwen_writer` was new → `KeyError`. Root cause stale code, but it exposed that generation
+exceptions were not caught; fixed + test added, server restarted.
+
+Results (measured):
+- Unit tests `tests/unit/test_brief.py` **27 passed** (adversarial 921-vs-842, correct-number-as-digits, reversed
+  direction, decrease/increase wording, 5 causal phrasings, certainty, unknown slot, cross-theme number, unknown review
+  ID, invented quoted theme, missing emerging theme, PII in output, malformed output, template values, fallback on
+  validation failure / no GPU / load failure / generation exception, template engine never loads Qwen, prompt contains
+  no fact values).
+- Live GPU tests `pytest -m models tests/models/test_qwen_brief.py` **3 passed** in 179 s (network blocked via dead
+  proxy + offline flags): model on CUDA; real-facts brief numbers ⊆ fact-sheet values and deterministic sections
+  unchanged; prompt-injection quote ("IGNORE ALL PREVIOUS RULES… 921 reviews… caused it") never produced an accepted
+  brief containing 921 or causal wording.
+- `scripts/generate_brief.py`: attempt 1 rejected (`causal language: causes`), attempt 2 passed; ~50–58 s per attempt
+  (~198 new tokens, ≈3.5–4 tokens/s with bnb 4-bit on the laptop GPU); stored as `qwen_brief`.
+- Live API (`POST /product-brief {"engine":"auto"}` on the local server with GPU): `generation_path: qwen_live`,
+  2 attempts, validation passed, 146.8 s including model load.
+- API tests: precomputed brief served with `BRIEF_MODE=precomputed`, validation flag true, no PII, deterministic sections
+  identical to the template, every number in its summary is an analytics value; `BRIEF_MODE=template` disables Qwen.
+  Full suite **140 passed** (3 model tests deselected by default).
+
+Known limitations: the validator guarantees numbers, names, IDs, direction words and non-causal wording, not every
+nuance — e.g. the stored summary calls Battery "previously emerging, now shows a significant rise" (it is currently
+EMERGING); interpretive phrases such as "indicating dissatisfaction" are allowed. Live generation is slow (1–3 min).
+
+**Status:** PASS WITH KNOWN LIMITATION — **Gate:** PROCEED
