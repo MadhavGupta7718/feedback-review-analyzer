@@ -1,0 +1,6 @@
+# Runtime dependencies of the API service only (Render). The API serves the precomputed, redacted
+# artifacts/analytics.db and never loads a model unless a local GPU + Qwen are present, so torch /
+# transformers are not needed here. Full pipeline dependencies: requirements.txt.
+fastapi==0.141.1
+uvicorn==0.54.0
+pydantic==2.13.5

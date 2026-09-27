@@ -1,0 +1,29 @@
+# Render Blueprint for the API. The service serves the committed, precomputed, PII-redacted
+# artifacts/analytics.db (synthetic demo batch). No model, dataset or token is needed on Render.
+services:
+  - type: web
+    name: feedback-review-analyzer-api
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ANALYTICS_DB
+        value: artifacts/analytics.db
+      - key: BRIEF_MODE
+        value: precomputed
+      - key: HF_HUB_OFFLINE
+        value: "1"
+      - key: TRANSFORMERS_OFFLINE
+        value: "1"
+      # Set to the Vercel production URL, e.g. https://feedback-review-analyzer.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      # Optional: allow Vercel preview deployments of this project only
+      - key: CORS_ORIGIN_REGEX
+        sync: false

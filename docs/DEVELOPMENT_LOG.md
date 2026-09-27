@@ -434,3 +434,66 @@ Tests: `tests/unit/test_pipeline_utils.py` (subsample determinism). Full suite *
 frontend **18 passed**.
 
 **Status:** PASS — **Gate:** PROCEED
+
+---
+
+## PHASES 15–16 — DEPLOYMENT PREPARATION + DOCUMENTATION (2026-09-27)
+
+**Deployment configuration**
+- `requirements-api.txt` (fastapi, uvicorn, pydantic, pinned): the API serves the precomputed DB and needs no torch or transformers.
+- `render.yaml` Blueprint:
+  - Python 3.11.9 (`.python-version`), `BRIEF_MODE=precomputed`, offline flags, `/health` check, `autoDeploy: false`.
+  - `CORS_ORIGINS` and `CORS_ORIGIN_REGEX` are `sync: false`, so they are entered in the Render dashboard rather than committed.
+- `frontend/vercel.json` (Phase 11): SPA rewrite plus security headers.
+- Docker is not used. There is one stateless Python process and one static site, and both platforms build them natively.
+
+**Production rehearsal (local):**
+- **Setup:** a fresh virtual environment with only `requirements-api.txt`, running `uvicorn` on port 8001 with `BRIEF_MODE=precomputed`, `CORS_ORIGINS=http://127.0.0.1:4173` and the Hugging Face cache pointed at a nonexistent folder. The frontend was built with `VITE_API_BASE_URL=http://127.0.0.1:8001` and served by `vite preview` on port 4173.
+- **Results:**
+  - backend tests in that environment: **37 passed**;
+  - `/health` ok with 10,104 reviews;
+  - `/model-info` reports `qwen_installed: false` and `live_generation_possible: false`;
+  - `POST /product-brief` (auto) returns `qwen_precomputed` with the CORS header for port 4173;
+  - a foreign origin gets no CORS header;
+  - in the browser, the production build rendered Complaint Radar → **View why** for Battery (111 → 243, `208 x 2.19 = 455.35`, evidence reviews) from the port 8001 API.
+- **Note:** the first screenshot after navigating still showed the previous page of the tab (the Product Brief page from the dev server on port 5173). A second screenshot after the load showed the correct page. It is noted here so the stale image is not mistaken for evidence.
+
+**Found while documenting:** the `pii_audit` report copied into `analytics.db` still contained the 23 redacted Sentiment140 tweets kept for
+manual review. The API never served them (`/data-health` exposes only the synthetic recall figures), but the database is the file that
+gets deployed, and the dataset must not be copied unnecessarily.
+- **Fix:** `ml/pipeline.py` drops `redacted_examples_for_manual_review` from the database copy. The existing DB was patched the same way (with a VACUUM), so the stored Qwen brief stays valid. The standalone report file keeps the examples as the manual-review audit record.
+- **Test added:** `test_no_sentiment140_text_in_reports`.
+
+**Gap closed (problem statement: "reads a batch of reviews"):** until now the pipeline accepted only the two built-in datasets.
+`--source path\to\reviews.csv` now loads any review CSV:
+- column names are matched case-insensitively (text, date, and optional rating, platform, version, ID);
+- ISO and `d/m/Y` or `m/d/Y` dates are accepted, and timezones are converted to UTC;
+- unsafe or duplicate IDs are replaced with `U000001`-style IDs;
+- a file without a text or date column is rejected with an explanation. Dates are never invented, because the radar and drift compare time windows;
+- the DB stores the source kind `csv` and the file name, not the local path (the first draft stored the full path, which `/health` would have exposed).
+
+Failed attempt: the date parser included a `%Z` format meant for "PDT" timestamps. Python's `strptime` does not parse such timezone names,
+and the unit test caught it, so the format was removed (Sentiment140 has its own parser).
+Verified end to end: the synthetic batch was re-saved with columns `Review, Date, Stars, Version` (no IDs, no platform) and run with
+`python -m ml.pipeline --source artifacts\cache\upload_test.csv --db artifacts\cache\upload_test.db --no-embedding-cache`.
+It took 44.0 s on the GPU and produced the same 27 themes and radar statuses (Failing Payment NEW 0 → 140, Battery EMERGING 111 → 243). Traceability passed,
+`/health` reports source `csv`, and review IDs are `U0xxxxx`.
+
+**Documentation written:**
+- `README.md` (updated)
+- `docs/RESULTS.md` (measured results only, each with its report file)
+- `docs/ARCHITECTURE.md`
+- `docs/MODEL_CARD.md`
+- `docs/DATASET.md`
+- `docs/TESTING.md`
+- `docs/API.md` (the example payloads were first written from memory with wrong field names, then corrected from real API responses)
+- `docs/DEMO.md`
+- `docs/DEPLOYMENT.md`
+
+**Tests:** full Python suite **148 passed** (3 model tests deselected); frontend **18 passed**.
+
+**Status:**
+- Deployment preparation: PASS.
+- Actual deployment: **BLOCKED**. It needs the owner's Render and Vercel accounts and a push to GitHub; the owner asked to keep commits local. Nothing is claimed as deployed.
+
+**Gate:** PROJECT COMPLETE LOCALLY. Deployment is pending the owner's action (steps in `docs/DEPLOYMENT.md`).
