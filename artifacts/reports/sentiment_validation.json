@@ -1,0 +1,249 @@
+{
+  "evaluation_date_utc": "2026-09-27T14:22:46.272000+00:00",
+  "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+  "dataset": "Sentiment140 (training.1600000.processed.noemoticon.csv)",
+  "sample": {
+    "path": "data/interim/s140_eval_5k.csv",
+    "seed": 42,
+    "size": 5000,
+    "label_counts": {
+      "negative": 2500,
+      "positive": 2500
+    },
+    "selection": "stratified random 2,500 per label; label-conflicting duplicate IDs excluded",
+    "preprocessing": {
+      "input_rows": 5000,
+      "kept_rows": 5000,
+      "rejected": {},
+      "ingestion_duplicates_removed": 0,
+      "identical_text_rows_kept": 37,
+      "pii_redactions": {
+        "USER": 2486,
+        "URL": 273,
+        "PERSON": 19,
+        "EMAIL": 1,
+        "PHONE": 2
+      },
+      "rows_with_pii": 2503,
+      "mojibake_repaired": 325,
+      "html_entities_decoded": 290
+    }
+  },
+  "ground_truth_note": "Sentiment140 has binary labels only (0=negative, 4=positive). It contains NO neutral ground truth.",
+  "methodology": "Sentiment evaluation against BINARY ground truth (Sentiment140: 0=negative, 4=positive; no neutral class).\n\nThe model predicts three classes. Three explicitly different scorings are reported, never mixed:\n\n  binary_forced   neutral is ignored: predict positive iff P(positive) > P(negative). Every example is scored.\n                  This is the headline metric because it matches the binary label space.\n  strict_3class   the model's argmax label is used; a \"neutral\" prediction is counted as WRONG for both\n                  classes (the ground truth never says neutral). Lower bound.\n  abstain         examples predicted neutral are excluded; accuracy is reported on the remainder together\n                  with coverage (share of examples not abstained).",
+  "model_revision": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+  "device": "cuda",
+  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
+  "metrics": {
+    "binary_forced": {
+      "n": 5000,
+      "accuracy": 0.7646,
+      "negative": {
+        "precision": 0.8087,
+        "recall": 0.6932,
+        "f1": 0.7465,
+        "support": 2500
+      },
+      "positive": {
+        "precision": 0.7315,
+        "recall": 0.836,
+        "f1": 0.7803,
+        "support": 2500
+      },
+      "macro_f1": 0.7634
+    },
+    "strict_3class": {
+      "n": 5000,
+      "accuracy": 0.6014,
+      "negative": {
+        "precision": 0.8561,
+        "recall": 0.576,
+        "f1": 0.6887,
+        "support": 2500
+      },
+      "positive": {
+        "precision": 0.7738,
+        "recall": 0.6268,
+        "f1": 0.6926,
+        "support": 2500
+      },
+      "macro_f1": 0.6906
+    },
+    "abstain": {
+      "n": 3707,
+      "accuracy": 0.8112,
+      "negative": {
+        "precision": 0.8561,
+        "recall": 0.7587,
+        "f1": 0.8045,
+        "support": 1898
+      },
+      "positive": {
+        "precision": 0.7738,
+        "recall": 0.8662,
+        "f1": 0.8174,
+        "support": 1809
+      },
+      "macro_f1": 0.811,
+      "coverage": 0.7414
+    },
+    "neutral_prediction_rate": 0.2586,
+    "confusion_true2_pred3": {
+      "negative": {
+        "negative": 1440,
+        "neutral": 602,
+        "positive": 458
+      },
+      "positive": {
+        "negative": 242,
+        "neutral": 691,
+        "positive": 1567
+      }
+    }
+  },
+  "mean_confidence": 0.7881,
+  "reproducibility": {
+    "identical_labels_between_runs": true,
+    "max_abs_prob_diff": 0.0
+  },
+  "cpu_vs_gpu_label_agreement": 0.998,
+  "cpu_metrics_on_subset": {
+    "n": 500,
+    "accuracy": 0.764,
+    "negative": {
+      "precision": 0.8084,
+      "recall": 0.692,
+      "f1": 0.7457,
+      "support": 250
+    },
+    "positive": {
+      "precision": 0.7308,
+      "recall": 0.836,
+      "f1": 0.7799,
+      "support": 250
+    },
+    "macro_f1": 0.7628
+  },
+  "gpu_metrics_on_same_subset": {
+    "n": 500,
+    "accuracy": 0.764,
+    "negative": {
+      "precision": 0.8084,
+      "recall": 0.692,
+      "f1": 0.7457,
+      "support": 250
+    },
+    "positive": {
+      "precision": 0.7308,
+      "recall": 0.836,
+      "f1": 0.7799,
+      "support": 250
+    },
+    "macro_f1": 0.7628
+  },
+  "benchmark": [
+    {
+      "device": "cuda",
+      "dtype": "float16",
+      "batch_size": 16,
+      "n": 5000,
+      "seconds": 13.67,
+      "reviews_per_sec": 365.8,
+      "peak_gpu_mem_gb": 0.283,
+      "oom": false
+    },
+    {
+      "device": "cuda",
+      "dtype": "float16",
+      "batch_size": 32,
+      "n": 5000,
+      "seconds": 8.11,
+      "reviews_per_sec": 616.6,
+      "peak_gpu_mem_gb": 0.307,
+      "oom": false
+    },
+    {
+      "device": "cuda",
+      "dtype": "float16",
+      "batch_size": 64,
+      "n": 5000,
+      "seconds": 5.32,
+      "reviews_per_sec": 939.3,
+      "peak_gpu_mem_gb": 0.357,
+      "oom": false
+    },
+    {
+      "device": "cuda",
+      "dtype": "float16",
+      "batch_size": 128,
+      "n": 5000,
+      "seconds": 5.23,
+      "reviews_per_sec": 956.3,
+      "peak_gpu_mem_gb": 0.457,
+      "oom": false
+    },
+    {
+      "device": "cuda",
+      "dtype": "float16",
+      "batch_size": 256,
+      "n": 5000,
+      "seconds": 5.35,
+      "reviews_per_sec": 934.4,
+      "peak_gpu_mem_gb": 0.657,
+      "oom": false
+    },
+    {
+      "device": "cpu",
+      "dtype": "float32",
+      "batch_size": 32,
+      "n": 500,
+      "seconds": 23.66,
+      "reviews_per_sec": 21.1,
+      "torch_threads": 8
+    }
+  ],
+  "synthetic_3class": {
+    "note": "Synthetic labels come from the template sentiment used to generate each review (weak labels, not human annotation).",
+    "n": 10104,
+    "accuracy": 0.8882,
+    "per_class": {
+      "negative": {
+        "precision": 0.9478,
+        "recall": 0.9863,
+        "f1": 0.9667,
+        "support": 5251
+      },
+      "neutral": {
+        "precision": 0.8803,
+        "recall": 0.3344,
+        "f1": 0.4847,
+        "support": 1561
+      },
+      "positive": {
+        "precision": 0.8087,
+        "recall": 0.9942,
+        "f1": 0.8919,
+        "support": 3292
+      }
+    },
+    "macro_f1": 0.7811,
+    "confusion": {
+      "negative": {
+        "negative": 5179,
+        "neutral": 67,
+        "positive": 5
+      },
+      "neutral": {
+        "negative": 270,
+        "neutral": 522,
+        "positive": 769
+      },
+      "positive": {
+        "negative": 15,
+        "neutral": 4,
+        "positive": 3273
+      }
+    },
+    "seconds": 9.72
+  }
+}

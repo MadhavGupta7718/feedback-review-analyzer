@@ -30,12 +30,17 @@ _URL = re.compile(
     r"(?i)\b(?:https?://|www\.)[^\s<>\"']+"
     r"|\b[a-z0-9][a-z0-9-]{1,62}\.(?:com|net|org|io|ly|co|me|gl|us|uk|in|tv|fm|info|biz)(?:/[^\s<>\"']*)?(?![\w@])"
 )
+# A URL broken by a space leaves its path/query behind: "[URL] /event.php?eid=902..."
+_URL_TAIL = re.compile(r"\[URL\]\s?/[^\s]+")
 _CARD = re.compile(r"(?<![\w-])(?:\d[ -]?){12,18}\d(?![\w-])")
 _ORDER = re.compile(r"(?i)\b(?:ORD(?:ER)?[-#]\s?\d{4,}|order\s*(?:#|no\.?|number|id)\s*[:#]?\s*[A-Z0-9-]*\d{4,}[A-Z0-9-]*)")
 _ACCOUNT = re.compile(r"(?i)\b(?:ACC(?:T|OUNT)?[-#]\s?\d{4,}|account\s*(?:#|no\.?|number|id)\s*(?:is\s*)?[:#]?\s*[A-Z0-9-]*\d{4,}[A-Z0-9-]*)")
 _CUSTOMER = re.compile(r"(?i)\b(?:CUST(?:OMER)?[-#]\s?\d{4,}|customer\s*(?:#|no\.?|number|id)\s*(?:is\s*)?[:#]?\s*[A-Z0-9-]*\d{4,}[A-Z0-9-]*)")
-_PHONE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)[\s.-]?)?\d{2,5}(?:[\s.-]\d{2,5}){1,3}(?![\w])")
+_PHONE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)[\s.-]?)?\d{2,5}(?:[\s.-]\d{2,8}){1,3}(?![\w])|(?<![\w])\+\d{7,14}(?![\w])")
+_BARE_PHONE = re.compile(r"(?<![\w.,/=&?-])\+?\d{10,12}(?![\w.,/-])")
 _HANDLE = re.compile(r"(?<![\w@\[])@[A-Za-z0-9_]{1,30}")
+_HANDLE_CHAINED = re.compile(r"(?<=\])@[A-Za-z0-9_]{1,30}")
+_HONORIFIC = re.compile(r"\b(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof)\.?\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)")
 
 _NAME = r"[A-Z][a-z]{1,20}(?:[-'][A-Z][a-z]+)?"
 _ANY_WORD = r"[A-Za-z][a-z]{1,20}"
@@ -102,12 +107,15 @@ class PIIRedactor:
         s = text
         s = sub(_EMAIL, "EMAIL", s)
         s = sub(_URL, "URL", s)
+        s = _URL_TAIL.sub("[URL]", s)
         s = sub(_ORDER, "ORDER_ID", s)
         s = sub(_ACCOUNT, "ACCOUNT_ID", s)
         s = sub(_CUSTOMER, "CUSTOMER_ID", s)
         s = sub(_CARD, "CARD", s, check=lambda v: 13 <= _digits(v) <= 19)
         s = sub(_PHONE, "PHONE", s, check=self._looks_like_phone)
+        s = sub(_BARE_PHONE, "PHONE", s, check=lambda v: len(set(v.lstrip("+"))) > 2)
         s = sub(_HANDLE, "USER", s)
+        s = sub(_HANDLE_CHAINED, "USER", s)
         s = self._redact_person(s, counts)
         return RedactionResult(s, dict(counts))
 
@@ -146,6 +154,11 @@ class PIIRedactor:
             counts["PERSON"] += 1
             return m.group(0).replace(name, PLACEHOLDERS["PERSON"], 1)
 
+        def honorific(m: re.Match) -> str:
+            counts["PERSON"] += 1
+            return m.group(0).replace(m.group(1), PLACEHOLDERS["PERSON"])
+
+        s = _HONORIFIC.sub(honorific, s)
         s = _PERSON_STRONG.sub(strong, s)
         s = _PERSON_WEAK.sub(weak, s)
         s = _PERSON_GAZ.sub(gazetteer, s)

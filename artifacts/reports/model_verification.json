@@ -1,0 +1,146 @@
+{
+  "timestamp_utc": "2026-09-27T14:20:26.331316+00:00",
+  "offline_env": {
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "HTTPS_PROXY": "http://127.0.0.1:9"
+  },
+  "network_blocked": true,
+  "device": "cuda",
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "sentence-transformers": "6.1.0",
+    "huggingface_hub": "1.33.0",
+    "bitsandbytes": "0.50.2"
+  },
+  "models": {
+    "cardiffnlp/twitter-roberta-base-sentiment-latest": {
+      "local_path": "D:\\huggingface\\hub\\models--cardiffnlp--twitter-roberta-base-sentiment-latest\\snapshots\\3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+      "revision": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+      "disk_gb": 0.468,
+      "config": true,
+      "tokenizer": true,
+      "weights": true,
+      "load_seconds": 14.69,
+      "labels": [
+        "negative",
+        "neutral",
+        "positive"
+      ],
+      "inference_seconds": 0.758,
+      "predictions": [
+        {
+          "text": "I love this app, it works perfectly!",
+          "label": "positive",
+          "confidence": 0.9886
+        },
+        {
+          "text": "This is the worst update ever, it crashes constantly.",
+          "label": "negative",
+          "confidence": 0.9548
+        },
+        {
+          "text": "The app was updated on Tuesday.",
+          "label": "neutral",
+          "confidence": 0.8171
+        }
+      ],
+      "checks": {
+        "labels_valid": true,
+        "probabilities_sum_to_1": true,
+        "positive_example_positive": true,
+        "negative_example_negative": true
+      },
+      "state": "LOADED"
+    },
+    "sentence-transformers/all-MiniLM-L6-v2": {
+      "local_path": "D:\\huggingface\\hub\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "disk_gb": 0.085,
+      "config": true,
+      "tokenizer": true,
+      "weights": true,
+      "load_seconds": 1.85,
+      "inference_seconds": 0.572,
+      "embedding_dim": 384,
+      "similarity": {
+        "battery drains quickly ~ battery dies fast": 0.6757,
+        "battery drains quickly ~ payment failed": -0.0087
+      },
+      "max_abs_diff_batch1_vs_batch3": 8.940696716308594e-08,
+      "checks": {
+        "dim_384": true,
+        "semantic_ordering": true,
+        "reproducible_across_batch_sizes": true
+      },
+      "state": "LOADED"
+    },
+    "Qwen/Qwen2.5-3B-Instruct": {
+      "local_path": "D:\\huggingface\\hub\\models--Qwen--Qwen2.5-3B-Instruct\\snapshots\\aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "disk_gb": 5.759,
+      "config": true,
+      "tokenizer": true,
+      "weights": true,
+      "hardware": {
+        "python_version": "3.11.9",
+        "platform": "Windows-10-10.0.26200-SP0",
+        "torch_version": "2.11.0+cu128",
+        "torch_cuda_version": "12.8",
+        "cuda_available": true,
+        "gpu_name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+        "gpu_total_vram_gb": 6.0,
+        "gpu_free_vram_gb": 4.9,
+        "compute_capability": "8.9",
+        "system_ram_total_gb": 15.65,
+        "system_ram_available_gb": 4.64
+      },
+      "plan": {
+        "device": "cuda",
+        "dtype": "bfloat16",
+        "quantization": "bnb-4bit-nf4",
+        "reason": "4.9 GB free VRAM < 7.2 GB needed for fp16; using 4-bit NF4 quantization"
+      },
+      "bitsandbytes_available": true,
+      "load_seconds": 20.71,
+      "gpu_memory_allocated_gb": 1.93,
+      "gpu_peak_memory_gb": 1.97,
+      "generation_config": {
+        "max_new_tokens": 120,
+        "do_sample": false,
+        "repetition_penalty": 1.05
+      },
+      "generation_seconds": 13.77,
+      "tokens_generated": 55,
+      "output": "Battery Drain theme growth from previous period (142 to 50) with 184% increase, 81% negative mentions reviewed in IDs R01002, R01044, R01209.",
+      "gpu_peak_memory_gb_after_generate": 1.99,
+      "numbers_in_output": [
+        "01002",
+        "01044",
+        "01209",
+        "142",
+        "184",
+        "50",
+        "81"
+      ],
+      "checks": {
+        "non_empty": true,
+        "on_gpu": true,
+        "no_invented_numbers": true,
+        "no_921": true,
+        "no_causal_language": true
+      },
+      "state": "LOADED"
+    },
+    "missing-model-handling": {
+      "message": "MODEL NOT INSTALLED: 'nonexistent-org/definitely-not-downloaded' is not in the local cache (D:\\huggingface\\hub). Run `python scripts/download_models.py` once with internet access. The application never downloads models at runtime.",
+      "state": "n/a",
+      "checks": {
+        "raises_not_installed": true
+      }
+    }
+  },
+  "failures": [],
+  "status": "PASS"
+}

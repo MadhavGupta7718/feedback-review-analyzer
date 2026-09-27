@@ -1,0 +1,103 @@
+{
+  "n_available": 10000,
+  "runs": [
+    {
+      "device": "cuda",
+      "n": 100,
+      "batch_size": 64,
+      "seconds": 0.104,
+      "reviews_per_sec": 962.8,
+      "peak_gpu_mem_gb": 0.129
+    },
+    {
+      "device": "cuda",
+      "n": 100,
+      "batch_size": 128,
+      "seconds": 0.073,
+      "reviews_per_sec": 1376.3,
+      "peak_gpu_mem_gb": 0.147
+    },
+    {
+      "device": "cuda",
+      "n": 100,
+      "batch_size": 256,
+      "seconds": 0.072,
+      "reviews_per_sec": 1395.7,
+      "peak_gpu_mem_gb": 0.147
+    },
+    {
+      "device": "cuda",
+      "n": 1000,
+      "batch_size": 64,
+      "seconds": 0.709,
+      "reviews_per_sec": 1409.8,
+      "peak_gpu_mem_gb": 0.136
+    },
+    {
+      "device": "cuda",
+      "n": 1000,
+      "batch_size": 128,
+      "seconds": 0.53,
+      "reviews_per_sec": 1886.6,
+      "peak_gpu_mem_gb": 0.179
+    },
+    {
+      "device": "cuda",
+      "n": 1000,
+      "batch_size": 256,
+      "seconds": 0.531,
+      "reviews_per_sec": 1884.0,
+      "peak_gpu_mem_gb": 0.265
+    },
+    {
+      "device": "cuda",
+      "n": 10000,
+      "batch_size": 64,
+      "seconds": 5.647,
+      "reviews_per_sec": 1771.0,
+      "peak_gpu_mem_gb": 0.142
+    },
+    {
+      "device": "cuda",
+      "n": 10000,
+      "batch_size": 128,
+      "seconds": 4.987,
+      "reviews_per_sec": 2005.1,
+      "peak_gpu_mem_gb": 0.191
+    },
+    {
+      "device": "cuda",
+      "n": 10000,
+      "batch_size": 256,
+      "seconds": 5.045,
+      "reviews_per_sec": 1982.2,
+      "peak_gpu_mem_gb": 0.271
+    },
+    {
+      "device": "cpu",
+      "n": 100,
+      "batch_size": 64,
+      "seconds": 0.747,
+      "reviews_per_sec": 133.9
+    },
+    {
+      "device": "cpu",
+      "n": 1000,
+      "batch_size": 64,
+      "seconds": 6.538,
+      "reviews_per_sec": 153.0
+    }
+  ],
+  "gpu_reproducibility_max_abs_diff": 1.825392246246338e-07,
+  "dim": 384,
+  "norms_min_max": [
+    0.9999999403953552,
+    1.0000001192092896
+  ],
+  "cpu_rss_delta_mb": 16.6,
+  "cpu_vs_gpu_max_abs_diff": 2.123415470123291e-07,
+  "checks": {
+    "dim_384": true,
+    "reproducible": true
+  }
+}

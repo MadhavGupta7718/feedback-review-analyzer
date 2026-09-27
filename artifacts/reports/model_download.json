@@ -1,0 +1,146 @@
+{
+  "started_utc": "2026-09-27T14:08:40.636926+00:00",
+  "python": "3.11.9",
+  "libraries": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "sentence-transformers": "6.1.0",
+    "huggingface_hub": "1.33.0",
+    "accelerate": "1.15.0",
+    "bitsandbytes": "0.50.2"
+  },
+  "hf_env_in_python": {
+    "HF_HOME": "D:\\huggingface",
+    "HF_HUB_CACHE": "D:\\huggingface\\hub",
+    "TRANSFORMERS_CACHE": "D:\\huggingface\\transformers"
+  },
+  "d_free_gb_before": 28.1,
+  "c_free_gb_before": 72.86,
+  "d_free_gb_after": 21.78,
+  "c_free_gb_after": 72.85,
+  "d_used_by_download_gb": 6.31,
+  "models": [
+    {
+      "repo_id": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+      "status": "DOWNLOADED",
+      "remote_sha": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+      "gated": false,
+      "allow_patterns": [
+        "*.json",
+        "*.txt",
+        "*.model",
+        "tokenizer*",
+        "vocab*",
+        "merges.txt",
+        "1_Pooling/*",
+        "*.md",
+        "pytorch_model.bin"
+      ],
+      "download_seconds": 46.9,
+      "local_path": "D:\\huggingface\\hub\\models--cardiffnlp--twitter-roberta-base-sentiment-latest\\snapshots\\3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+      "revision": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
+      "files": [
+        "README.md",
+        "config.json",
+        "merges.txt",
+        "pytorch_model.bin",
+        "special_tokens_map.json",
+        "vocab.json"
+      ],
+      "disk_bytes": 502406167,
+      "disk_gb": 0.47,
+      "file_checks": {
+        "config": true,
+        "weights": true,
+        "tokenizer": true
+      },
+      "required": true
+    },
+    {
+      "repo_id": "sentence-transformers/all-MiniLM-L6-v2",
+      "status": "DOWNLOADED",
+      "remote_sha": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "gated": false,
+      "allow_patterns": [
+        "*.json",
+        "*.txt",
+        "*.model",
+        "tokenizer*",
+        "vocab*",
+        "merges.txt",
+        "1_Pooling/*",
+        "*.md",
+        "model.safetensors"
+      ],
+      "download_seconds": 10.5,
+      "local_path": "D:\\huggingface\\hub\\models--sentence-transformers--all-MiniLM-L6-v2\\snapshots\\1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "files": [
+        "1_Pooling/config.json",
+        "README.md",
+        "config.json",
+        "config_sentence_transformers.json",
+        "data_config.json",
+        "model.safetensors",
+        "modules.json",
+        "sentence_bert_config.json",
+        "special_tokens_map.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.txt"
+      ],
+      "disk_bytes": 91617680,
+      "disk_gb": 0.09,
+      "file_checks": {
+        "config": true,
+        "weights": true,
+        "tokenizer": true
+      },
+      "required": true
+    },
+    {
+      "repo_id": "Qwen/Qwen2.5-3B-Instruct",
+      "status": "DOWNLOADED",
+      "remote_sha": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "gated": false,
+      "allow_patterns": [
+        "*.json",
+        "*.txt",
+        "*.model",
+        "tokenizer*",
+        "vocab*",
+        "merges.txt",
+        "1_Pooling/*",
+        "*.md",
+        "model-00001-of-00002.safetensors",
+        "model-00002-of-00002.safetensors"
+      ],
+      "download_seconds": 475.5,
+      "local_path": "D:\\huggingface\\hub\\models--Qwen--Qwen2.5-3B-Instruct\\snapshots\\aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+      "files": [
+        "README.md",
+        "config.json",
+        "generation_config.json",
+        "merges.txt",
+        "model-00001-of-00002.safetensors",
+        "model-00002-of-00002.safetensors",
+        "model.safetensors.index.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "vocab.json"
+      ],
+      "disk_bytes": 6183456028,
+      "disk_gb": 5.76,
+      "file_checks": {
+        "config": true,
+        "weights": true,
+        "tokenizer": true
+      },
+      "required": true
+    }
+  ],
+  "finished_utc": "2026-09-27T14:17:35.050325+00:00",
+  "failures": [],
+  "status": "PASS"
+}
