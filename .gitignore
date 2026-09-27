@@ -1,0 +1,43 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets / local config
+.env
+.env.*
+!.env.example
+
+# Raw data must never be committed
+*.csv
+!tests/fixtures/*.csv
+data/raw/
+data/interim/
+
+# Local-only artifacts (large / regenerable)
+artifacts/embeddings/
+artifacts/cache/
+artifacts/logs/
+*.npy
+*.parquet
+models/*
+!models/README.md
+
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/test-results/
+frontend/playwright-report/
+.vercel
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

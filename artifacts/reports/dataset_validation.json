@@ -1,0 +1,85 @@
+{
+  "report": {
+    "path": "D:\\Microsoft\\sentiment analysis\\archive\\training.1600000.processed.noemoticon.csv",
+    "size_bytes": 238803811,
+    "encoding": "latin-1",
+    "rows": 1600000,
+    "well_formed_rows": 1600000,
+    "malformed_rows": 0,
+    "malformed_examples": [],
+    "column_count_distribution": {
+      "6": 1600000
+    },
+    "label_distribution": {
+      "0": 800000,
+      "4": 800000
+    },
+    "unexpected_labels": {},
+    "flag_distribution": {
+      "NO_QUERY": 1600000
+    },
+    "missing_values": {
+      "target": 0,
+      "id": 0,
+      "date": 0,
+      "flag": 0,
+      "user": 0,
+      "text": 0
+    },
+    "empty_text": 0,
+    "duplicate_ids": 1685,
+    "duplicate_id_conflicting_labels": 1685,
+    "excluded_conflicting_ids": 1685,
+    "duplicate_texts": 23300,
+    "unique_users": 659775,
+    "unparseable_dates": 0,
+    "date_min": "2009-04-06T22:19:45",
+    "date_max": "2009-06-25T10:28:31",
+    "rows_per_month": {
+      "2009-04": 100025,
+      "2009-05": 576367,
+      "2009-06": 923608
+    },
+    "text_length": {
+      "min": 3,
+      "max": 373,
+      "mean": 73.31,
+      "median": 68.0,
+      "p95": 136.0
+    },
+    "replacement_char_rows": 0,
+    "html_entity_rows": 94458,
+    "url_rows": 76463,
+    "mention_rows": 746432
+  },
+  "scan_seconds": 83.6,
+  "samples": {
+    "seed": 42,
+    "eval": {
+      "rows": 5000,
+      "per_label": 2500
+    },
+    "batch": {
+      "rows": 10000,
+      "per_label": 5000
+    },
+    "fixture": {
+      "rows": 200,
+      "per_label": 100
+    },
+    "eligible_rows_per_label": {
+      "0": 798315,
+      "4": 798315
+    }
+  },
+  "checks": {
+    "row_count_matches_expected": true,
+    "all_rows_have_6_columns": true,
+    "labels_only_0_and_4": true,
+    "no_silent_loss": true,
+    "timestamps_parseable": true,
+    "eval_batch_disjoint": true,
+    "conflicting_label_ids_excluded_from_samples": true
+  },
+  "status": "PASS"
+}

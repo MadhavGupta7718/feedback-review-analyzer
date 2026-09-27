@@ -1,0 +1,58 @@
+{
+  "timestamp_utc": "2026-09-27T13:56:25.398353+00:00",
+  "python_executable": "D:\\Microsoft\\feedback-review-analyzer\\.venv\\Scripts\\python.exe",
+  "node": "v22.21.1",
+  "git": "git version 2.53.0.windows.2",
+  "disk": {
+    "C:": {
+      "total_gb": 377.2,
+      "free_gb": 72.9
+    },
+    "D:": {
+      "total_gb": 97.7,
+      "free_gb": 28.1
+    }
+  },
+  "hf_env": {
+    "HF_HOME": "D:\\huggingface",
+    "HF_HUB_CACHE": "D:\\huggingface\\hub",
+    "TRANSFORMERS_CACHE": "D:\\huggingface\\transformers"
+  },
+  "hf_cache_exists": false,
+  "dataset": {
+    "path": "D:\\Microsoft\\sentiment analysis\\archive\\training.1600000.processed.noemoticon.csv",
+    "exists": true,
+    "size_bytes": 238803811
+  },
+  "hardware": {
+    "python_version": "3.11.9",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch_version": "2.11.0+cu128",
+    "torch_cuda_version": "12.8",
+    "cuda_available": true,
+    "gpu_name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "gpu_total_vram_gb": 6.0,
+    "gpu_free_vram_gb": 4.95,
+    "compute_capability": "8.9",
+    "system_ram_total_gb": 15.65,
+    "system_ram_available_gb": 6.22
+  },
+  "packages": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.17.0",
+    "sentence-transformers": "6.1.0",
+    "huggingface-hub": "1.33.0",
+    "accelerate": "1.15.0",
+    "bitsandbytes": "0.50.2",
+    "hdbscan": "0.8.44",
+    "scikit-learn": "1.9.1",
+    "numpy": "2.4.6",
+    "pandas": "3.0.6",
+    "fastapi": "0.141.1",
+    "uvicorn": "0.54.0",
+    "pydantic": "2.13.5",
+    "scipy": "1.17.1",
+    "psutil": "7.2.2",
+    "pytest": "9.1.1"
+  }
+}
