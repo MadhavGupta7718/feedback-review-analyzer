@@ -42,15 +42,18 @@ def cache_key(texts: list[str]) -> str:
     return h.hexdigest()[:16]
 
 
-def encode_cached(texts: list[str], device: str, batch_size: int = 128) -> tuple[np.ndarray, dict]:
+def encode_cached(texts: list[str], device: str, batch_size: int = 128, use_cache: bool = True) -> tuple[np.ndarray, dict]:
     """Embeddings are an artifact (artifacts/embeddings/*.npy), not database rows."""
+    from ml.models.registry import locate
+
     d = config.ARTIFACTS_DIR / "embeddings"
     d.mkdir(parents=True, exist_ok=True)
     path = d / f"{cache_key(texts)}.npy"
-    if path.exists():
-        return np.load(path), {"cached": True, "path": str(path)}
+    if use_cache and path.exists():
+        return np.load(path), {"cached": True, "path": str(path), "revision": locate(config.EMBEDDING_MODEL).revision}
     emb = Embedder(device)
     out = emb.encode(texts, batch_size)
-    np.save(path, out.vectors)
+    if use_cache:
+        np.save(path, out.vectors)
     return out.vectors, {"cached": False, "path": str(path), "seconds": round(out.seconds, 2), "device": device,
                          "batch_size": batch_size, "revision": out.revision}

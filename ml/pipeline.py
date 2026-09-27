@@ -209,7 +209,16 @@ def write_db(path: Path, meta: dict, reviews: list[dict], themes: list[dict], ra
     tmp.rename(path)
 
 
-def run(source: str = "synthetic", limit: int | None = None, db_path: Path | None = None, device: str | None = None) -> dict:
+def subsample(rows: list[dict], limit: int | None) -> list[dict]:
+    """Deterministic, evenly spaced subsample so a small batch still spans the whole time range."""
+    if not limit or limit >= len(rows):
+        return rows
+    idx = np.linspace(0, len(rows) - 1, limit).round().astype(int)
+    return [rows[i] for i in idx]
+
+
+def run(source: str = "synthetic", limit: int | None = None, db_path: Path | None = None, device: str | None = None,
+        use_embedding_cache: bool = True) -> dict:
     import torch
 
     from ml.embeddings.encoder import encode_cached
@@ -225,8 +234,7 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
     print(f"Pipeline source={source} device={device}", flush=True)
 
     rows, dataset_info = timer.run("load", load_source, source)
-    if limit:
-        rows = rows[:limit]
+    rows = subsample(rows, limit)
     cleaned, clean_rep = timer.run("validate_redact_clean", clean_batch, rows)
     for r in cleaned:
         r["created_at"] = parse_dt(r.get("created_at"))
@@ -244,7 +252,7 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
     if device == "cuda":
         torch.cuda.empty_cache()
 
-    emb, emb_info = timer.run("embeddings", encode_cached, embedding_texts(texts), device)
+    emb, emb_info = timer.run("embeddings", encode_cached, embedding_texts(texts), device, 128, use_embedding_cache)
     tres = timer.run("themes", discover, emb, texts, ThemeParams())
     for idx, r in enumerate(cleaned):
         lab = int(tres.labels[idx])
@@ -351,8 +359,9 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--db", type=Path, default=None)
     ap.add_argument("--device", default=None, choices=[None, "cuda", "cpu"])
+    ap.add_argument("--no-embedding-cache", action="store_true")
     args = ap.parse_args()
-    res = run(args.source, args.limit, args.db, args.device)
+    res = run(args.source, args.limit, args.db, args.device, not args.no_embedding_cache)
     print(json.dumps({"overview": res["overview"], "traceability": res["traceability"],
                       "performance": {k: v for k, v in res["performance"].items() if k != "embedding"}}, indent=2, default=str))
     return 0 if res["traceability"]["status"] == "PASS" else 1

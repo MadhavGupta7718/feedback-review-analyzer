@@ -1,0 +1,74 @@
+{
+  "hardware": {
+    "python_version": "3.11.9",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "torch_version": "2.11.0+cu128",
+    "torch_cuda_version": "12.8",
+    "cuda_available": true,
+    "gpu_name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "gpu_total_vram_gb": 6.0,
+    "gpu_free_vram_gb": 4.95,
+    "compute_capability": "8.9",
+    "system_ram_total_gb": 15.65,
+    "system_ram_available_gb": 3.92
+  },
+  "torch": "2.11.0+cu128",
+  "embedding_cache": "disabled",
+  "note": "total_seconds excludes Python/torch import; wall_seconds includes process start and imports.",
+  "results": [
+    {
+      "source": "synthetic",
+      "limit": 100,
+      "device": "cuda",
+      "n_reviews": 100,
+      "total_seconds": 17.28,
+      "stages": {
+        "load": 0.09,
+        "validate_redact_clean": 0.027,
+        "load_sentiment_model": 13.436,
+        "sentiment": 1.016,
+        "embeddings": 1.852,
+        "themes": 0.723,
+        "complaint_radar": 0.01,
+        "drift": 0.025,
+        "traceability_audit": 0.003,
+        "write_db": 0.048
+      },
+      "peak_rss_mb": 1484.0,
+      "peak_gpu_mem_gb": 0.538,
+      "sentiment_reviews_per_sec": 98.9,
+      "embedding_seconds": 0.3,
+      "n_themes": 6,
+      "emerging": [],
+      "traceability": "PASS",
+      "wall_seconds_including_process_start": 29.1
+    },
+    {
+      "source": "synthetic",
+      "limit": 1000,
+      "device": "cuda",
+      "n_reviews": 999,
+      "total_seconds": 17.11,
+      "stages": {
+        "load": 0.092,
+        "validate_redact_clean": 0.278,
+        "load_sentiment_model": 11.761,
+        "sentiment": 1.712,
+        "embeddings": 2.323,
+        "themes": 0.778,
+        "complaint_radar": 0.014,
+        "drift": 0.024,
+        "traceability_audit": 0.026,
+        "write_db": 0.055
+      },
+      "peak_rss_mb": 1496.6,
+      "peak_gpu_mem_gb": 0.538,
+      "sentiment_reviews_per_sec": 584.7,
+      "embedding_seconds": 0.7,
+      "n_themes": 19,
+      "emerging": [],
+      "traceability": "PASS",
+      "wall_seconds_including_process_start": 27.8
+    }
+  ]
+}

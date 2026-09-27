@@ -26,10 +26,11 @@ DOMAIN_STOPWORDS = {
 @dataclass
 class ThemeParams:
     pca_components: int = 20
-    # None = scale with batch size: max(15, 0.4% of reviews) -> 40 for a 10K batch. Larger values give
-    # cleaner themes but hide small (possibly emerging) issues.
+    # None = scale with batch size (scripts/theme_scaling.py): min_cluster_size = clip(1% of reviews, 3, 40),
+    # min_samples = clip(reviews / 1000, 3, 10) -> 40 / 10 for a 10K batch, 3 / 3 for 100 reviews.
+    # Larger values give cleaner themes but hide small (possibly emerging) issues.
     min_cluster_size: int | None = None
-    min_samples: int = 10
+    min_samples: int | None = None
     cluster_selection_method: str = "eom"
     # Stage 2: HDBSCAN finds dense micro-clusters (often one per phrasing); micro-clusters whose centroids
     # have cosine similarity >= merge_threshold (average linkage) are merged into one theme.
@@ -193,9 +194,10 @@ def discover(embeddings: np.ndarray, texts: list[str], params: ThemeParams | Non
     X = embeddings
     ncomp = min(p.pca_components, X.shape[1], max(2, n - 1))
     Xr = PCA(n_components=ncomp, random_state=p.seed).fit_transform(X)
-    mcs = p.min_cluster_size or max(15, int(round(0.004 * n)))
-    p = ThemeParams(**{**asdict(p), "min_cluster_size": mcs})
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=min(p.min_samples, mcs),
+    mcs = p.min_cluster_size or int(np.clip(round(0.01 * n), 3, 40))
+    ms = min(p.min_samples or int(np.clip(round(n / 1000), 3, 10)), mcs)
+    p = ThemeParams(**{**asdict(p), "min_cluster_size": mcs, "min_samples": ms})
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=mcs, min_samples=ms,
                                 cluster_selection_method=p.cluster_selection_method, metric="euclidean",
                                 core_dist_n_jobs=1)
     raw = clusterer.fit_predict(Xr)

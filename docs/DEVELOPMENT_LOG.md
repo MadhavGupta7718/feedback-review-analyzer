@@ -385,3 +385,52 @@ nuance — e.g. the stored summary calls Battery "previously emerging, now shows
 EMERGING); interpretive phrases such as "indicating dissatisfaction" are allowed. Live generation is slow (1–3 min).
 
 **Status:** PASS WITH KNOWN LIMITATION — **Gate:** PROCEED
+
+---
+
+## PHASES 13–14 — END-TO-END RUNS, SCALING, OFFLINE DEMO (2026-09-27)
+
+`scripts/benchmark_pipeline.py` runs the whole pipeline (load → redact/clean → sentiment → embeddings → themes → radar →
+drift → traceability → SQLite) in a fresh subprocess per configuration, embedding cache disabled.
+`ml/pipeline.py --limit N` now takes a deterministic evenly spaced subsample (previously the first N rows, which in
+time-ordered data meant "first week only"); `--no-embedding-cache` added.
+
+**Measured (synthetic batch, RTX 4050 Laptop vs CPU; `artifacts/reports/pipeline_benchmark.json`):**
+
+| reviews | GPU total | CPU total | GPU sentiment rev/s | CPU sentiment rev/s | GPU embed s | CPU embed s | traceability |
+|---|---|---|---|---|---|---|---|
+| 100 | 19.2 s | 21.4 s | 88 | 19 | 0.33 | 0.67 | PASS |
+| 999 | 16.5 s | 55.6 s | 588 | 27 | 0.66 | 5.71 | PASS |
+| 10,104 | 46.7 s | 455.4 s | 805 | 28 | 5.69 | 64.27 | PASS |
+
+GPU is 9.8× faster end to end at 10K (model load ≈ 13 s dominates small batches).
+Sentiment140 10K batch end to end on GPU (`pipeline_benchmark_sentiment140.json`): 9,999 tweets, 43.1 s, 824 rev/s,
+traceability PASS, 3 themes (open-ended tweets rarely form product themes — documented limitation from Phase 6).
+
+**Failed attempt (found by the benchmark):** small batches produced no useful themes — 0 themes at 100 reviews, 2 at 999
+(ARI −0.006) — because `min_cluster_size = max(15, 0.4% n)` and a fixed `min_samples = 10` were tuned for 10K.
+Investigation: `scripts/theme_scaling.py` (grid over min_cluster_size × min_samples at 100 / 250 / 500 / 1K / 2.5K / 10K,
+scored against planted ground truth; `artifacts/reports/theme_scaling.json`).
+Fix: `min_cluster_size = clip(1% n, 3, 40)`, `min_samples = clip(n / 1000, 3, 10)` — identical (40 / 10) at 10K, so the
+main results are unchanged. With the rule: 100 → 6 themes (ARI 0.604), 250 → 19 (0.571), 500 → 21 (0.640),
+999 → 19 (0.808), 2.5K → 18 (0.662), 10K → 27 (0.640). Re-benchmark on GPU: 100 → 6 themes, 999 → 19 themes
+(`pipeline_benchmark_small_adaptive.json`).
+Related fix: a cached-embedding run recorded MiniLM `revision: null` in `model_versions`; the cache path now records the
+local revision.
+
+The main database and the stored Qwen brief were regenerated after these changes (pipeline 36.3 s, 27 themes,
+traceability PASS; brief attempt 1 rejected for causal wording, attempt 2 passed).
+
+`scripts/run_demo.py` — offline demo (dead proxy + HF offline flags for the process and its children): console walkthrough
+of overview, radar with VIEW WHY calculation and evidence, sentiment validation, data health and product brief, all through
+the real API code; `--fresh N` re-runs the pipeline first; `--serve` starts API + dashboard. Verified: default walkthrough
+(brief path `qwen_precomputed`), and `--fresh 1000` (16.9 s on GPU, 19 themes, traceability PASS, brief falls back to the
+template because the fresh database has no stored Qwen brief).
+Observation: in a 1,000-review subsample no issue reaches NEW/EMERGING because the radar's evidence threshold is absolute
+(≥ 30 current-window mentions); Failing Payment has ≈ 14 there. This is intended: small batches do not raise alarms on
+thin evidence.
+
+Tests: `tests/unit/test_pipeline_utils.py` (subsample determinism). Full suite **143 passed** (+3 model tests deselected);
+frontend **18 passed**.
+
+**Status:** PASS — **Gate:** PROCEED
