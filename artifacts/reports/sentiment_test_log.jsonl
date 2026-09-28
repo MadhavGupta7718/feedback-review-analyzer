@@ -1,0 +1,6 @@
+{"utc": "2026-09-28T18:15:38.717536+00:00", "config": "pretrained current preprocessing (baseline + tuned threshold)"}
+{"utc": "2026-09-28T18:37:27.571560+00:00", "config": "comparison model siebert/sentiment-roberta-large-english (reported only, not selected on test)"}
+{"utc": "2026-09-28T18:41:17.141139+00:00", "config": "comparison model distilbert/distilbert-base-uncased-finetuned-sst-2-english (reported only, not selected on test)"}
+{"utc": "2026-09-28T22:04:58.565143+00:00", "config": "fine-tuned binary ft01 (threshold 0.5)"}
+{"utc": "2026-09-28T22:06:10.623105+00:00", "config": "evaluate_sentiment.py: product model, fixed threshold (re-run, no selection)"}
+{"utc": "2026-09-28T22:12:46.193564+00:00", "config": "evaluate_sentiment.py: product model, fixed threshold (re-run, no selection)"}

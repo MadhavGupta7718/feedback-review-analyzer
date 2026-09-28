@@ -54,5 +54,11 @@ NER_MODEL = "dslim/bert-base-NER"
 
 REQUIRED_MODELS = [SENTIMENT_MODEL, EMBEDDING_MODEL, QWEN_MODEL]
 OPTIONAL_MODELS = [NER_MODEL]
+# evaluation-only baselines for the sentiment study; never used by the product pipeline
+COMPARISON_MODELS = ["siebert/sentiment-roberta-large-english", "distilbert/distilbert-base-uncased-finetuned-sst-2-english"]
+FINETUNED_SENTIMENT_DIR = ARTIFACTS_DIR / "models" / "roberta-s140-binary"
+# Binary decision on P(pos) / (P(pos) + P(neg)) when a 3-class prediction must be scored against 2-class truth.
+# Tuned for accuracy on the Sentiment140 VALIDATION split only (artifacts/reports/sentiment_study_val.json).
+SENTIMENT_BINARY_THRESHOLD = 0.725
 
 EMBEDDING_DIM = 384

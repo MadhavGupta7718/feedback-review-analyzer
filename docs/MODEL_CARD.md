@@ -16,18 +16,29 @@ with instructions to run `scripts/download_models.py`. Measured values come from
 - **Why:** trained on tweets, so short and informal review text is in-domain. It has three classes, so mixed or neutral reviews are not forced into positive or negative.
 - **Input:** PII-redacted, cleaned text, truncated to 128 tokens.
 - **Output:** a label, class probabilities and a confidence score. Batches are sorted by length; fp16 on CUDA, fp32 on CPU.
-- **Validation:** 5,000 labelled Sentiment140 tweets.
-  - Binary-forced accuracy 0.7646, macro F1 0.7634.
-  - Strict 3-class accuracy 0.6014.
-  - Abstain accuracy 0.8112 at 74.14% coverage.
+- **Validation:** held-out Sentiment140 test split, 156,705 tweets (80/10/10 text-group split of all 1.6M rows, no overlap with train or validation).
+  - Binary-forced accuracy 0.7766, macro F1 0.7757.
+  - With the validation-tuned binary threshold (`SENTIMENT_BINARY_THRESHOLD = 0.725` on P(pos)/(P(pos)+P(neg))): 0.7806, macro F1 0.7806.
+  - Strict 3-class accuracy 0.6024.
+  - Abstain accuracy 0.8207 at 73.4% coverage.
+  - The earlier 5,000-tweet sample gave 0.7646 and still reproduces exactly.
 
-  See `docs/RESULTS.md` for per-class precision and recall and the confusion matrix.
+  See `docs/RESULTS.md` for per-class precision and recall, the confusion matrix and the full accuracy study.
+- **Accuracy study (summary):**
+  - Preprocessing variants, negation handling and PII redaction change validation accuracy by at most 0.1 pp. None was adopted.
+  - Neutral → nearest class by probability (strategy C) is the scoring used. Mapping neutral to a fixed label, or excluding it, is biased or not comparable.
+  - Larger or other off-the-shelf models scored lower on test: siebert RoBERTa-large 0.7520, DistilBERT-SST-2 0.7073.
+- **Experimental fine-tuned binary variant** (`artifacts/models/roberta-s140-binary`, not used by the pipeline):
+  - Same checkpoint, 2-class head, fine-tuned on 100,000 train-split tweets.
+  - Test accuracy 0.8730, macro F1 0.8730 (+9.63 pp over the pretrained baseline).
+  - It cannot predict neutral, which the product needs for mixed reviews. It is also tuned to Sentiment140's emoticon-derived labels, so the gain may not carry over to product reviews.
 - **Known weaknesses:**
   - Sentiment140 labels were produced from emoticons (distant supervision), so they are noisy, and they have no neutral class. That is why three scorings are reported instead of one flattering number.
   - On the synthetic reviews, neutral recall is only 0.33: the model labels mild or mixed reviews as positive or negative.
-  - Negative recall on Sentiment140 is 0.69 (binary). The model often calls negative tweets neutral (602 of 2,500).
+  - Negative recall on Sentiment140 is 0.71 (binary, 0.775 with the tuned threshold). The model often calls negative tweets neutral (19,099 of 78,357 on the test split).
+  - Contrast and mixed-sentiment tweets ("but", "though") have the highest error rate (0.32 on validation).
   - English only.
-- **Speed:** 956 rev/s at batch size 128 on the RTX 4050 (peak 0.46 GB); 21 rev/s on the CPU.
+- **Speed:** 918 rev/s at batch size 64 on the RTX 4050 (peak 0.38 GB); 22 rev/s on the CPU.
 
 ## 2. Embeddings: all-MiniLM-L6-v2
 

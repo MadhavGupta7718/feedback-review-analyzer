@@ -74,7 +74,7 @@ def walkthrough(db: Path) -> None:
         for e in [x for x in ev if x["evidence_kind"] == "radar_evidence"][:3]:
             print(wrap(f"[{e['review_id']}] \"{e['text']}\"", "      "))
 
-    h("3. SENTIMENT VALIDATION (labelled Sentiment140 sample)")
+    h("3. SENTIMENT VALIDATION (held-out labelled Sentiment140 test split)")
     sv = c.get("/sentiment/validation").json()
     mt = sv["metrics"]
     print(wrap(f"{sv['model']} on {sv['sample']['size']:,} labelled tweets: binary accuracy {mt['binary_forced']['accuracy'] * 100:.1f}% "

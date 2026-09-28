@@ -82,6 +82,7 @@ export function SentimentValidation() {
   const m = data.metrics;
   const bench = (data.benchmark ?? []).filter((b) => !b.oom).map((b) => ({ label: `${b.device} bs${b.batch_size}`, rps: b.reviews_per_sec }));
   const syn = data.synthetic_3class;
+  const study = data.accuracy_study;
 
   return (
     <div className="page">
@@ -109,11 +110,53 @@ export function SentimentValidation() {
         <MetricsTable
           rows={[
             { name: "Binary forced", m: m.binary_forced, note: "positive iff P(pos) > P(neg)" },
+            ...(m.binary_threshold
+              ? [
+                  {
+                    name: "Binary, tuned threshold",
+                    m: m.binary_threshold,
+                    note: `positive iff P(pos)/(P(pos)+P(neg)) > ${m.binary_threshold.threshold} (tuned on validation only)`,
+                  },
+                ]
+              : []),
             { name: "Abstain on neutral", m: m.abstain, note: "neutral predictions excluded" },
             { name: "Strict 3-class", m: m.strict_3class, note: "neutral counted as wrong" },
           ]}
         />
       </Card>
+      {study && (
+        <Card title="Accuracy study" subtitle={study.split}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Configuration</th>
+                <th className="num">Val accuracy</th>
+                <th className="num">Val macro F1</th>
+                <th className="num">Test accuracy</th>
+                <th className="num">Test macro F1</th>
+              </tr>
+            </thead>
+            <tbody>
+              {study.rows.map((r) => (
+                <tr key={`${r.config}-${r.model}`}>
+                  <td>
+                    <div className="theme-name">{r.config}</div>
+                    <div className="muted small mono">
+                      {r.model}
+                      {r.in_product ? " · used by the pipeline" : " · not used by the pipeline"}
+                    </div>
+                  </td>
+                  <td className="num">{fmtRatio(r.val_accuracy)}</td>
+                  <td className="num">{fmtNum(r.val_macro_f1)}</td>
+                  <td className="num strong">{fmtRatio(r.test_accuracy)}</td>
+                  <td className="num">{fmtNum(r.test_macro_f1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="muted small">{study.note}</p>
+        </Card>
+      )}
       <div className="grid-2">
         <Card title="Confusion matrix (Sentiment140)" subtitle="Binary truth vs the model's 3-class prediction">
           <Confusion rows={["negative", "positive"]} cols={["negative", "neutral", "positive"]} data={m.confusion_true2_pred3} />

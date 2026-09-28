@@ -9,7 +9,8 @@ recorded in `docs/DEVELOPMENT_LOG.md`.
 
 | What | Result |
 |---|---|
-| Sentiment accuracy on 5,000 labelled Sentiment140 tweets (binary, every example scored) | **0.7646** (macro F1 0.7634) |
+| Sentiment accuracy on the held-out Sentiment140 test split, 156,705 tweets (product model, binary, every example scored) | **0.7766** (macro F1 0.7757); **0.7806** with the validation-tuned binary threshold |
+| Separate fine-tuned binary RoBERTa (experiment, not in the pipeline), same test split | **0.8730** (macro F1 0.8730) |
 | PII recall on the synthetic batch (628 planted PII rows, 9 types) | **100%** (628/628), 0 false-positive rows out of 9,476 |
 | Evidence traceability audit (theme/complaint → review IDs) | PASS: 213 links checked, 0 problems |
 | Planted synthetic themes recovered | 12 of 13 (the missing one, 24 reviews, is below the minimum theme size) |
@@ -19,22 +20,136 @@ recorded in `docs/DEVELOPMENT_LOG.md`.
 ## Sentiment validation (`sentiment_validation.json`)
 
 Model `cardiffnlp/twitter-roberta-base-sentiment-latest` (revision `3216a57f2a0d`), fp16 on CUDA.
-Sample: 5,000 Sentiment140 tweets, stratified 2,500 per label, seed 42; tweets whose ID appears with conflicting labels
-are excluded. PII is redacted before inference. Sentiment140 has **no neutral ground truth**, so three
-scorings are reported separately:
+Evaluation set: the held-out **test split** of all 1.6M Sentiment140 tweets (156,705 tweets: 78,357 negative, 78,348
+positive; see "Sentiment accuracy study" below for how the split was built). PII is redacted before inference.
+Sentiment140 has **no neutral ground truth**, so the scorings are reported separately:
 
 | Scoring | n | Accuracy | Macro F1 | Neg P / R | Pos P / R |
 |---|---|---|---|---|---|
-| binary_forced (positive iff P(pos) > P(neg)), headline | 5,000 | 0.7646 | 0.7634 | 0.8087 / 0.6932 | 0.7315 / 0.8360 |
-| strict_3class (a neutral prediction counts as wrong) | 5,000 | 0.6014 | 0.6906 | 0.8561 / 0.5760 | 0.7738 / 0.6268 |
-| abstain (neutral predictions excluded) | 3,707 (coverage 0.7414) | 0.8112 | 0.8110 | 0.8561 / 0.7587 | 0.7738 / 0.8662 |
+| binary_forced (positive iff P(pos) > P(neg)), headline | 156,705 | 0.7766 | 0.7757 | 0.8177 / 0.7119 | 0.7449 / 0.8413 |
+| binary_threshold (positive iff P(pos)/(P(pos)+P(neg)) > 0.725, threshold tuned on validation only) | 156,705 | 0.7806 | 0.7806 | 0.7838 / 0.7750 | 0.7775 / 0.7862 |
+| strict_3class (a neutral prediction counts as wrong) | 156,705 | 0.6024 | 0.6948 | 0.8673 / 0.5820 | 0.7814 / 0.6227 |
+| abstain (neutral predictions excluded) | 115,023 (coverage 0.734) | 0.8207 | 0.8206 | 0.8673 / 0.7696 | 0.7814 / 0.8749 |
 
-- Confusion matrix (rows are the true label; columns are predicted negative / neutral / positive): negative 1440 / 602 / 458; positive 242 / 691 / 1567. The model predicted neutral for 25.86% of tweets.
-- Reproducibility: two GPU runs gave identical labels (max probability difference 0.0). CPU and GPU labels agree on 0.998 of a 500-tweet subset, with accuracy 0.764 on both devices.
+- Confusion matrix (rows are the true label; columns are predicted negative / neutral / positive): negative 45,605 / 19,099 / 13,653; positive 6,975 / 22,583 / 48,790. The model predicted neutral for 26.6% of tweets.
+- Reproducibility: 5,000 test tweets scored twice with identical settings gave identical labels (max probability difference 0.0). Batch size 128 vs 64 changes 0.06% of labels (fp16 padding differences; max probability difference 0.0029). CPU and GPU labels agree on 100% of a 500-tweet subset (accuracy 0.788 on both).
+- The earlier headline, 0.7646 on a stratified 5,000-tweet sample, is still reproduced exactly by the same model and code; it is a different, smaller sample and is not directly comparable with the test-split numbers.
 - Synthetic 3-class check (weak template labels, not human annotation; 10,104 reviews): accuracy 0.8882, macro F1 0.7811, neutral recall **0.3344**. The model pushes mild reviews towards positive or negative.
 
-Sentiment throughput on the GPU (fp16, 5,000 tweets): batch size 16 gives 366 rev/s, 32 gives 617, 64 gives 939, **128 gives 956 (peak 0.457 GB)** and 256 gives 934.
-On the CPU (fp32, batch size 32, 8 threads): 21.1 rev/s.
+Sentiment throughput on the GPU (fp16, 5,000 test tweets): batch size 16 gives 448 rev/s, 32 gives 753, **64 gives 918 (peak 0.381 GB)**, 128 gives 891 and 256 gives 845.
+On the CPU (fp32, batch size 32, 8 threads): 21.9 rev/s.
+
+## Sentiment accuracy study (`sentiment_study_*.json`, `sentiment_finetune.json`, `sentiment_error_analysis.json`)
+
+Goal: raise the real, measured accuracy on Sentiment140 without tuning on the test data. Code:
+`scripts/build_s140_split.py`, `scripts/sentiment_experiments.py`, `scripts/finetune_sentiment.py`.
+
+**Split** (`s140_split.json`). All 1,600,000 rows were grouped by a normalised text key (lower case, HTML entities
+decoded, mentions → `@user`, links → `http`, whitespace collapsed) and each group went to train / validation / test by a
+seeded hash (80/10/10), so identical or trivially re-posted text never crosses splits (overlap checked: 0 in every pair).
+Excluded, and counted: 3,370 rows whose tweet ID carries both labels, and 20,385 rows whose text group carries both
+labels. Result: train 1,262,463, validation 157,077, test 156,705, each 49.9–50.0% positive, so no class weighting was
+needed. Every test evaluation is appended to `sentiment_test_log.jsonl` (6 entries: the pretrained model once, each
+comparison model once, the fine-tuned model once, and two re-runs of `evaluate_sentiment.py` with no selection).
+
+**Neutral strategies** (pretrained model, validation / test accuracy):
+
+| Strategy | Validation | Test | Comment |
+|---|---|---|---|
+| A: neutral → negative | 0.7199 | 0.7243 | fixed bias towards negative (positive recall 0.62) |
+| B: neutral → positive | 0.7466 | 0.7465 | fixed bias towards positive (negative recall 0.58) |
+| C: neutral → nearer class by the model's own probabilities | **0.7748** | **0.7767** | chosen: uses the model's evidence, no fixed bias, every tweet scored |
+| D: exclude neutral | 0.8185 (coverage 0.7325) | 0.8207 (coverage 0.734) | not comparable: drops the hardest 27% |
+
+C is the defensible choice because A and B inject a label bias by construction and D scores only an easier subset.
+Within neutral predictions, 45% of tweets are truly negative, so the neutral class is not "mostly one label".
+
+**Preprocessing** (validation, strategy C, McNemar test against the current pipeline):
+
+| Variant | Accuracy | Changed inputs | McNemar p |
+|---|---|---|---|
+| current (repair → redact → tidy → `@user`/`http`) | 0.7748 | – | – |
+| keep punctuation runs | 0.7748 | 7,439 | 0.29 |
+| no ftfy repair | 0.7749 | 1,414 | 0.37 |
+| remove links | 0.7748 | 7,796 | 0.94 |
+| remove mentions | 0.7738 | 72,232 | 0.0005 (worse) |
+| `#word` → `word` | 0.7747 | 3,658 | 0.02 |
+| placeholders left as `[USER]`/`[URL]` | 0.7750 | 77,371 | 0.75 |
+| raw tweet, unredacted (reference only) | 0.7753 | all | 0.20 |
+
+No PII-safe variant met the selection rule (at least +0.1 pp with p < 0.01), so preprocessing is unchanged. The fully
+raw, unredacted tweet is only 0.05 pp better and not significant, so PII redaction costs no measurable accuracy.
+Negation: 40,135 validation tweets (25.6%) contain a negation word. Their accuracy is 0.7663 against 0.7748 overall.
+No preprocessing step removes words, and the negation-word count changes in only 23 of 157,077 rows. Negation handling
+therefore needs no fix.
+
+**Confidence.** Accuracy rises with confidence: 0.573 when the top probability is below 0.5, 0.874 when it is 0.9 or
+above. Mean confidence is 0.80 on correct and 0.72 on wrong predictions. The 26.8% of tweets predicted neutral are
+0.655 accurate after strategy C, against 0.819 for the rest.
+
+**Threshold** (validation only): the score P(pos)/(P(pos)+P(neg)) with a cut at **0.725** gave validation accuracy 0.7795,
+against 0.7748 at 0.5. On test, the unchanged threshold gives **0.7806 vs 0.7767** (+0.39 pp; McNemar p = 1.4e-10;
+4,940 tweets fixed, 4,321 broken). It also balances the classes: negative recall rises from 0.712 to 0.775 and positive
+recall falls from 0.841 to 0.786.
+
+**Fine-tuning a separate binary model** (`artifacts/models/roberta-s140-binary`, gitignored; the product model is untouched).
+Initialised from the same checkpoint with a 2-class head copied from its negative and positive rows. Trained on 100,000
+train-split tweets (50,000 per label) with production preprocessing: AdamW (weight decay 0.01), 6% warm-up then linear
+decay, gradient clipping 1.0, bf16 autocast, max 64 tokens (0.02% of tweets are longer), seed 42, early stopping with
+patience 1. Selection used a fixed stratified 20,000-tweet validation subset.
+
+| Run | lr | Batch | Max epochs | Epochs run | Best epoch | Val-subset accuracy | Val-subset macro F1 | Training time |
+|---|---|---|---|---|---|---|---|---|
+| **ft01** (selected) | 1e-5 | 32 | 3 | 3 | 3 | **0.8756** | 0.8756 | 2,200 s |
+| ft02 | 2e-5 | 32 | 3 | 3 | 3 | 0.8748 | 0.8747 | 2,689 s |
+| ft03 | 3e-5 | 32 | 3 | 3 | 2 | 0.8750 | 0.8750 | 3,978 s |
+| ft04 | 1e-5 | 16 | 3 | 3 | 2 | 0.8752 | 0.8752 | 4,728 s |
+| ft05 | 1e-5 | 32 | 4 | 3 (early stop) | 2 | 0.8746 | 0.8745 | 2,330 s |
+
+The five runs are within 0.1 pp of each other, which is inside the noise of a 20,000-tweet subset (standard error about
+0.23 pp). ft02 to ft04 took longer because inference jobs shared the GPU. Selected ft01: full validation accuracy
+**0.8732** (macro F1 0.8731). The tuned threshold (0.485) gained only 0.02 pp on validation, so the default 0.5 is kept.
+Single test run: **0.8730** accuracy, macro F1 0.8730 (negative P/R 0.8708/0.8759, positive P/R 0.8751/0.8701). That
+is **+9.63 pp over the pretrained baseline** (McNemar: 22,489 tweets fixed, 7,396 broken, p < 1e-300). Test throughput:
+945 tweets/s.
+
+**Comparison models** (evaluation only; production preprocessing, strategy C):
+
+| Model | Validation | Test |
+|---|---|---|
+| cardiffnlp twitter-roberta-base-sentiment-latest (product) | 0.7748 | 0.7767 |
+| `siebert/sentiment-roberta-large-english` (355M, binary) | 0.7528 | 0.7520 |
+| `distilbert/distilbert-base-uncased-finetuned-sst-2-english` (binary) | 0.7075 | 0.7073 |
+
+Neither comparison model beats the product model, so RoBERTa stays. siebert's training data includes a small
+hand-labelled Sentiment140 test set, which could only have helped it.
+
+**Error analysis** (validation; categories are automatic keyword/regex proxies, not manual annotation):
+
+| Category | Share of tweets | Error rate, pretrained | Error rate, fine-tuned |
+|---|---|---|---|
+| all | 100% | 0.2252 | 0.1268 |
+| contrast / mixed sentiment ("but", "though") | 10.4% | 0.322 | 0.163 |
+| emoji / emoticon remnants | 1.8% | 0.271 | 0.145 |
+| slang / abbreviations | 15.1% | 0.264 | 0.152 |
+| question | 10.4% | 0.251 | 0.152 |
+| elongated words (spelling proxy) | 8.2% | 0.245 | 0.135 |
+| reply (starts with a mention) | 43.3% | 0.244 | 0.144 |
+| negation | 25.6% | 0.234 | 0.133 |
+| short text (4 words or fewer) | 10.5% | 0.183 | 0.104 |
+| possible sarcasm (keyword proxy) | 0.4% | 0.160 | 0.077 |
+| low binary margin (score within 0.1 of 0.5, each model's own score) | 4.7% (pretrained) | 0.481 | 0.468 |
+
+Domain-specific language could not be measured automatically (no domain lexicon). Contrast and mixed-sentiment tweets are
+the hardest category for the pretrained model. The fine-tuned model roughly halves the error in every category except the low-margin tweets, which stay near
+chance: many Sentiment140 labels come from emoticons that were stripped from the text, so some tweets carry no
+recoverable sentiment. Labels were never changed. Example tweets are kept only in the gitignored cache, so no dataset
+text is committed.
+
+**What changed in the product:** nothing in the 3-class labels. The validation-tuned binary threshold is now
+`config.SENTIMENT_BINARY_THRESHOLD` and reported by `scripts/evaluate_sentiment.py` and the Sentiment Validation page, next
+to the unchanged `binary_forced` headline. The fine-tuned binary model stays an experiment: the product needs a neutral
+class, which a binary model cannot give.
 
 ## PII redaction (`pii_audit.json`)
 
@@ -101,8 +216,8 @@ The whole pipeline, from load through redaction, sentiment, embeddings, themes, 
 
 | Suite | Result |
 |---|---|
-| Python unit + integration + API (`pytest`) | 148 passed, 3 GPU model tests deselected by default |
-| GPU model tests (`pytest -m models`) | 3 passed |
+| Python unit + integration + API (`pytest`) | 156 passed, 16 model tests deselected by default |
+| Model tests (`pytest -m models`) | Sentiment regression: 13 passed (CPU and GPU). Qwen brief: 3 passed |
 | API tests in a minimal environment with no torch or transformers (`requirements-api.txt`) | 37 passed |
 | Frontend (Vitest + Testing Library) | 18 passed; `tsc -b` clean; production build OK (largest chunk 359 kB) |
 

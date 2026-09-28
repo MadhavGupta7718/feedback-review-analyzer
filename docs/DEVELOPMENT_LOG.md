@@ -497,3 +497,56 @@ It took 44.0 s on the GPU and produced the same 27 themes and radar statuses (Fa
 - Actual deployment: **BLOCKED**. It needs the owner's Render and Vercel accounts and a push to GitHub; the owner asked to keep commits local. Nothing is claimed as deployed.
 
 **Gate:** PROJECT COMPLETE LOCALLY. Deployment is pending the owner's action (steps in `docs/DEPLOYMENT.md`).
+
+## PHASE 17 — SENTIMENT ACCURACY STUDY (2026-09-28)
+
+Goal: raise the real, measured sentiment accuracy of `cardiffnlp/twitter-roberta-base-sentiment-latest` on
+Sentiment140 without tuning on test data. Owner decisions:
+- a new 80/10/10 split of all 1.6M rows, so the old 5K number is no longer directly comparable;
+- fine-tune a separate binary model as an experiment, and keep the 3-class model in the pipeline;
+- about 2 hours of fine-tuning;
+- 1–2 comparison models for evaluation only.
+
+All numbers are in `docs/RESULTS.md` ("Sentiment accuracy study").
+
+**Inspection.** The pipeline already follows the model card: mentions → `@user`, links → `http`, 128 tokens, no lower-casing,
+emojis kept. Label mapping is by `id2label` name, not position. The old 5K sample reproduced 0.7646 exactly before any change.
+
+**Steps**
+1. `scripts/build_s140_split.py`: text-group hash split (67 s).
+   - Split sizes: train 1,262,463, validation 157,077, test 156,705.
+   - Excluded: 3,370 conflicting-ID rows and 20,385 conflicting-text rows.
+   - Cross-split overlap: 0.
+2. `sentiment_experiments.py val-study` (34 min, about 394 tweets/s including the cache):
+   - 9 preprocessing variants, with neutral strategies A–D for each;
+   - the negation subset;
+   - McNemar tests against the current pipeline;
+   - confidence analysis;
+   - threshold tuning on validation. Selected: current preprocessing, threshold 0.725.
+3. `sentiment_experiments.py test-eval`: one test run. Baseline 0.7767, tuned threshold 0.7806.
+4. `finetune_sentiment.py matrix`: 5 runs, 4.4 h in total, selected ft01. Then `finetune_sentiment.py final`: full validation 0.8732, then one test run, 0.8730.
+5. `sentiment_experiments.py compare`: siebert 0.7520 and DistilBERT 0.7073 on test.
+6. `sentiment_experiments.py errors`: category error rates for the pretrained and fine-tuned models.
+7. `scripts/evaluate_sentiment.py` moved from the 5K sample to the test split. It adds neutral strategies, the tuned-threshold scoring and an `accuracy_study` summary, which the Sentiment Validation page shows in a new card.
+
+**Decisions and why**
+- Preprocessing unchanged: no PII-safe variant gained at least 0.1 pp with p < 0.01. Removing mentions was significantly *worse* (−0.1 pp).
+- Strategy C (neutral → nearer class by probability) stays the headline. A and B add a fixed bias, and D drops 27% of the data.
+- The threshold is reported as an additional scoring, not a replacement. The product emits 3-class labels, so the threshold only affects binary evaluation. The unchanged `binary_forced` number stays the headline and feeds the brief caveat.
+- The fine-tuned model is not integrated. It cannot output neutral, and its gain is measured on Sentiment140's emoticon-derived labels, not on product reviews.
+- The comparison models were worse, so RoBERTa stays.
+- No class weighting: all splits are 49.9–50.0% positive.
+
+**Failed attempts and problems**
+- The first fine-tuning launch crashed on step 1 with `shape '[-1, 3]' is invalid`. Replacing the classifier head updated `config.num_labels`, but not the model's own `num_labels` attribute that the loss uses. Fixed by setting both.
+- The fine-tuning took longer than budgeted. A run at batch 32 took 37 min alone on the GPU, and 45–66 min while inference jobs shared it. The batch-16 run took 79 min. An attempt to stop the process after three runs was blocked, so the full planned matrix (5 runs, 4.4 h) ran to the end.
+- Updating the `sentiment_validation` report stored in `artifacts/analytics.db`, and regenerating the Qwen brief (whose caveat quotes the accuracy), were blocked while the owner was away. Until that step runs, the committed DB still serves the earlier 5K-sample report.
+- The first `evaluate_sentiment.py` run compared a batch-128 run with a batch-64 run and reported "identical labels: false" (0.06% of labels differ from fp16 padding). The dashboard would have shown "reproducible: no". The check now repeats identical settings (identical, max difference 0.0) and reports the batch-size agreement separately (0.9994).
+- Error-analysis examples (redacted tweets) were first written into the committed report. They were moved to the gitignored cache, so no dataset text is committed.
+- One frontend run timed out on the first test (59 s run while the GPU jobs were loading the machine). The re-run passed in 12.7 s.
+
+**Tests:**
+- New: `tests/unit/test_sentiment_eval.py` (8 tests) and `tests/models/test_sentiment_model.py` (13 tests, CPU and GPU).
+- Full Python suite: **156 passed**.
+- Sentiment model tests: **13 passed**.
+- Frontend: **18 passed**, `tsc` clean, build OK.

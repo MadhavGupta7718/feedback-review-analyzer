@@ -196,6 +196,23 @@ export interface BenchmarkRow {
   oom: boolean;
 }
 
+export interface AccuracyStudyRow {
+  config: string;
+  model: string;
+  in_product: boolean;
+  val_accuracy: number;
+  val_macro_f1: number;
+  test_accuracy: number;
+  test_macro_f1: number;
+}
+
+export interface AccuracyStudy {
+  split: string;
+  selected_preprocessing: string;
+  rows: AccuracyStudyRow[];
+  note: string;
+}
+
 export interface SentimentValidation {
   evaluation_date_utc: string;
   model: string;
@@ -212,7 +229,9 @@ export interface SentimentValidation {
     abstain: BinaryMetrics;
     neutral_prediction_rate: number;
     confusion_true2_pred3: Record<"negative" | "positive", Record<Sentiment, number>>;
+    binary_threshold?: BinaryMetrics & { threshold: number };
   };
+  accuracy_study?: AccuracyStudy | null;
   mean_confidence: number;
   reproducibility?: { identical_labels_between_runs: boolean; max_abs_prob_diff: number };
   cpu_vs_gpu_label_agreement?: number;

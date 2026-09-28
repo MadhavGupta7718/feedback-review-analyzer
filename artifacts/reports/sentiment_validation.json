@@ -1,145 +1,282 @@
 {
-  "evaluation_date_utc": "2026-09-27T14:22:46.272000+00:00",
+  "evaluation_date_utc": "2026-09-28T22:12:46.193564+00:00",
   "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
   "dataset": "Sentiment140 (training.1600000.processed.noemoticon.csv)",
   "sample": {
-    "path": "data/interim/s140_eval_5k.csv",
+    "path": "data/interim/s140_split/test.csv",
     "seed": 42,
-    "size": 5000,
+    "size": 156705,
     "label_counts": {
-      "negative": 2500,
-      "positive": 2500
+      "negative": 78357,
+      "positive": 78348
     },
-    "selection": "stratified random 2,500 per label; label-conflicting duplicate IDs excluded",
-    "preprocessing": {
-      "input_rows": 5000,
-      "kept_rows": 5000,
-      "rejected": {},
-      "ingestion_duplicates_removed": 0,
-      "identical_text_rows_kept": 37,
-      "pii_redactions": {
-        "USER": 2486,
-        "URL": 273,
-        "PERSON": 19,
-        "EMAIL": 1,
-        "PHONE": 2
-      },
-      "rows_with_pii": 2503,
-      "mojibake_repaired": 325,
-      "html_entities_decoded": 290
+    "selection": "held-out 10% test split of all 1.6M tweets (text-group hash split, no train/val overlap)",
+    "preprocessing": "production: repair -> PII redaction -> tidy -> @user/http",
+    "split_exclusions": {
+      "conflicting_id_rows": 3370,
+      "conflicting_text_rows": 20385
     }
   },
   "ground_truth_note": "Sentiment140 has binary labels only (0=negative, 4=positive). It contains NO neutral ground truth.",
-  "methodology": "Sentiment evaluation against BINARY ground truth (Sentiment140: 0=negative, 4=positive; no neutral class).\n\nThe model predicts three classes. Three explicitly different scorings are reported, never mixed:\n\n  binary_forced   neutral is ignored: predict positive iff P(positive) > P(negative). Every example is scored.\n                  This is the headline metric because it matches the binary label space.\n  strict_3class   the model's argmax label is used; a \"neutral\" prediction is counted as WRONG for both\n                  classes (the ground truth never says neutral). Lower bound.\n  abstain         examples predicted neutral are excluded; accuracy is reported on the remainder together\n                  with coverage (share of examples not abstained).",
+  "methodology": "Sentiment evaluation against BINARY ground truth (Sentiment140: 0=negative, 4=positive; no neutral class).\n\nThe model predicts three classes. Three explicitly different scorings are reported, never mixed:\n\n  binary_forced   neutral is ignored: predict positive iff P(positive) > P(negative). Every example is scored.\n                  This is the headline metric because it matches the binary label space.\n  strict_3class   the model's argmax label is used; a \"neutral\" prediction is counted as WRONG for both\n                  classes (the ground truth never says neutral). Lower bound.\n  abstain         examples predicted neutral are excluded; accuracy is reported on the remainder together\n                  with coverage (share of examples not abstained).\n\n  binary_threshold  positive iff P(pos) / (P(pos) + P(neg)) > 0.725; the threshold was tuned for accuracy on the\n                    VALIDATION split only and applied unchanged here.",
   "model_revision": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
   "device": "cuda",
   "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
   "metrics": {
     "binary_forced": {
-      "n": 5000,
-      "accuracy": 0.7646,
+      "n": 156705,
+      "accuracy": 0.7766,
       "negative": {
-        "precision": 0.8087,
-        "recall": 0.6932,
-        "f1": 0.7465,
-        "support": 2500
+        "precision": 0.8177,
+        "recall": 0.7119,
+        "f1": 0.7612,
+        "support": 78357
       },
       "positive": {
-        "precision": 0.7315,
-        "recall": 0.836,
-        "f1": 0.7803,
-        "support": 2500
+        "precision": 0.7449,
+        "recall": 0.8413,
+        "f1": 0.7902,
+        "support": 78348
       },
-      "macro_f1": 0.7634
+      "macro_f1": 0.7757
     },
     "strict_3class": {
-      "n": 5000,
-      "accuracy": 0.6014,
+      "n": 156705,
+      "accuracy": 0.6024,
       "negative": {
-        "precision": 0.8561,
-        "recall": 0.576,
-        "f1": 0.6887,
-        "support": 2500
+        "precision": 0.8673,
+        "recall": 0.582,
+        "f1": 0.6966,
+        "support": 78357
       },
       "positive": {
-        "precision": 0.7738,
-        "recall": 0.6268,
-        "f1": 0.6926,
-        "support": 2500
+        "precision": 0.7814,
+        "recall": 0.6227,
+        "f1": 0.6931,
+        "support": 78348
       },
-      "macro_f1": 0.6906
+      "macro_f1": 0.6948
     },
     "abstain": {
-      "n": 3707,
-      "accuracy": 0.8112,
+      "n": 115023,
+      "accuracy": 0.8207,
       "negative": {
-        "precision": 0.8561,
-        "recall": 0.7587,
-        "f1": 0.8045,
-        "support": 1898
+        "precision": 0.8673,
+        "recall": 0.7696,
+        "f1": 0.8156,
+        "support": 59258
       },
       "positive": {
-        "precision": 0.7738,
-        "recall": 0.8662,
-        "f1": 0.8174,
-        "support": 1809
+        "precision": 0.7814,
+        "recall": 0.8749,
+        "f1": 0.8255,
+        "support": 55765
       },
-      "macro_f1": 0.811,
-      "coverage": 0.7414
+      "macro_f1": 0.8206,
+      "coverage": 0.734
     },
-    "neutral_prediction_rate": 0.2586,
+    "neutral_prediction_rate": 0.266,
     "confusion_true2_pred3": {
       "negative": {
-        "negative": 1440,
-        "neutral": 602,
-        "positive": 458
+        "negative": 45605,
+        "neutral": 19099,
+        "positive": 13653
       },
       "positive": {
-        "negative": 242,
-        "neutral": 691,
-        "positive": 1567
+        "negative": 6975,
+        "neutral": 22583,
+        "positive": 48790
+      }
+    },
+    "binary_threshold": {
+      "n": 156705,
+      "accuracy": 0.7806,
+      "negative": {
+        "precision": 0.7838,
+        "recall": 0.775,
+        "f1": 0.7794,
+        "support": 78357
+      },
+      "positive": {
+        "precision": 0.7775,
+        "recall": 0.7862,
+        "f1": 0.7818,
+        "support": 78348
+      },
+      "macro_f1": 0.7806,
+      "threshold": 0.725,
+      "confusion": {
+        "negative": {
+          "negative": 60729,
+          "positive": 17628
+        },
+        "positive": {
+          "negative": 16751,
+          "positive": 61597
+        }
       }
     }
   },
-  "mean_confidence": 0.7881,
+  "neutral_strategies": {
+    "A_neutral_to_negative": {
+      "n": 156705,
+      "accuracy": 0.7243,
+      "negative": {
+        "precision": 0.6864,
+        "recall": 0.8258,
+        "f1": 0.7497,
+        "support": 78357
+      },
+      "positive": {
+        "precision": 0.7814,
+        "recall": 0.6227,
+        "f1": 0.6931,
+        "support": 78348
+      },
+      "macro_f1": 0.7214,
+      "confusion": {
+        "negative": {
+          "negative": 64704,
+          "positive": 13653
+        },
+        "positive": {
+          "negative": 29558,
+          "positive": 48790
+        }
+      },
+      "coverage": 1.0,
+      "neutral_prediction_rate": 0.266
+    },
+    "B_neutral_to_positive": {
+      "n": 156705,
+      "accuracy": 0.7465,
+      "negative": {
+        "precision": 0.8673,
+        "recall": 0.582,
+        "f1": 0.6966,
+        "support": 78357
+      },
+      "positive": {
+        "precision": 0.6855,
+        "recall": 0.911,
+        "f1": 0.7823,
+        "support": 78348
+      },
+      "macro_f1": 0.7394,
+      "confusion": {
+        "negative": {
+          "negative": 45605,
+          "positive": 32752
+        },
+        "positive": {
+          "negative": 6975,
+          "positive": 71373
+        }
+      },
+      "coverage": 1.0,
+      "neutral_prediction_rate": 0.266
+    },
+    "C_nearest_binary": {
+      "n": 156705,
+      "accuracy": 0.7766,
+      "negative": {
+        "precision": 0.8177,
+        "recall": 0.7119,
+        "f1": 0.7612,
+        "support": 78357
+      },
+      "positive": {
+        "precision": 0.7449,
+        "recall": 0.8413,
+        "f1": 0.7902,
+        "support": 78348
+      },
+      "macro_f1": 0.7757,
+      "confusion": {
+        "negative": {
+          "negative": 55785,
+          "positive": 22572
+        },
+        "positive": {
+          "negative": 12434,
+          "positive": 65914
+        }
+      },
+      "coverage": 1.0,
+      "neutral_prediction_rate": 0.266
+    },
+    "D_exclude_neutral": {
+      "n": 115023,
+      "accuracy": 0.8207,
+      "negative": {
+        "precision": 0.8673,
+        "recall": 0.7696,
+        "f1": 0.8156,
+        "support": 59258
+      },
+      "positive": {
+        "precision": 0.7814,
+        "recall": 0.8749,
+        "f1": 0.8255,
+        "support": 55765
+      },
+      "macro_f1": 0.8206,
+      "confusion": {
+        "negative": {
+          "negative": 45605,
+          "positive": 13653
+        },
+        "positive": {
+          "negative": 6975,
+          "positive": 48790
+        }
+      },
+      "coverage": 0.734,
+      "neutral_prediction_rate": 0.266
+    }
+  },
+  "mean_confidence": 0.7834,
   "reproducibility": {
     "identical_labels_between_runs": true,
-    "max_abs_prob_diff": 0.0
+    "max_abs_prob_diff": 0.0,
+    "note": "5000 evenly spaced test tweets scored twice with identical settings",
+    "batch_size_128_vs_64_label_agreement": 0.9994,
+    "batch_size_128_vs_64_max_abs_prob_diff": 0.002889394760131836
   },
-  "cpu_vs_gpu_label_agreement": 0.998,
+  "cpu_vs_gpu_label_agreement": 1.0,
   "cpu_metrics_on_subset": {
     "n": 500,
-    "accuracy": 0.764,
+    "accuracy": 0.788,
     "negative": {
-      "precision": 0.8084,
-      "recall": 0.692,
-      "f1": 0.7457,
+      "precision": 0.8429,
+      "recall": 0.708,
+      "f1": 0.7696,
       "support": 250
     },
     "positive": {
-      "precision": 0.7308,
-      "recall": 0.836,
-      "f1": 0.7799,
+      "precision": 0.7483,
+      "recall": 0.868,
+      "f1": 0.8037,
       "support": 250
     },
-    "macro_f1": 0.7628
+    "macro_f1": 0.7866
   },
   "gpu_metrics_on_same_subset": {
     "n": 500,
-    "accuracy": 0.764,
+    "accuracy": 0.788,
     "negative": {
-      "precision": 0.8084,
-      "recall": 0.692,
-      "f1": 0.7457,
+      "precision": 0.8429,
+      "recall": 0.708,
+      "f1": 0.7696,
       "support": 250
     },
     "positive": {
-      "precision": 0.7308,
-      "recall": 0.836,
-      "f1": 0.7799,
+      "precision": 0.7483,
+      "recall": 0.868,
+      "f1": 0.8037,
       "support": 250
     },
-    "macro_f1": 0.7628
+    "macro_f1": 0.7866
   },
   "benchmark": [
     {
@@ -147,9 +284,9 @@
       "dtype": "float16",
       "batch_size": 16,
       "n": 5000,
-      "seconds": 13.67,
-      "reviews_per_sec": 365.8,
-      "peak_gpu_mem_gb": 0.283,
+      "seconds": 11.27,
+      "reviews_per_sec": 443.5,
+      "peak_gpu_mem_gb": 0.288,
       "oom": false
     },
     {
@@ -157,9 +294,9 @@
       "dtype": "float16",
       "batch_size": 32,
       "n": 5000,
-      "seconds": 8.11,
-      "reviews_per_sec": 616.6,
-      "peak_gpu_mem_gb": 0.307,
+      "seconds": 6.6,
+      "reviews_per_sec": 757.2,
+      "peak_gpu_mem_gb": 0.319,
       "oom": false
     },
     {
@@ -167,9 +304,9 @@
       "dtype": "float16",
       "batch_size": 64,
       "n": 5000,
-      "seconds": 5.32,
-      "reviews_per_sec": 939.3,
-      "peak_gpu_mem_gb": 0.357,
+      "seconds": 5.39,
+      "reviews_per_sec": 928.2,
+      "peak_gpu_mem_gb": 0.381,
       "oom": false
     },
     {
@@ -177,9 +314,9 @@
       "dtype": "float16",
       "batch_size": 128,
       "n": 5000,
-      "seconds": 5.23,
-      "reviews_per_sec": 956.3,
-      "peak_gpu_mem_gb": 0.457,
+      "seconds": 5.57,
+      "reviews_per_sec": 898.1,
+      "peak_gpu_mem_gb": 0.502,
       "oom": false
     },
     {
@@ -187,9 +324,9 @@
       "dtype": "float16",
       "batch_size": 256,
       "n": 5000,
-      "seconds": 5.35,
-      "reviews_per_sec": 934.4,
-      "peak_gpu_mem_gb": 0.657,
+      "seconds": 5.9,
+      "reviews_per_sec": 848.0,
+      "peak_gpu_mem_gb": 0.746,
       "oom": false
     },
     {
@@ -197,8 +334,8 @@
       "dtype": "float32",
       "batch_size": 32,
       "n": 500,
-      "seconds": 23.66,
-      "reviews_per_sec": 21.1,
+      "seconds": 22.81,
+      "reviews_per_sec": 21.9,
       "torch_threads": 8
     }
   ],
@@ -244,6 +381,63 @@
         "positive": 3273
       }
     },
-    "seconds": 9.72
+    "seconds": 10.39
+  },
+  "previous_evaluation": {
+    "sample": "data/interim/s140_eval_5k.csv (stratified 5,000 tweets)",
+    "binary_forced_accuracy": 0.7646,
+    "note": "earlier headline number; a different, smaller sample, so not directly comparable"
+  },
+  "accuracy_study": {
+    "split": "Sentiment140 80/10/10 text-group split (val 157077 / test 156705)",
+    "selected_preprocessing": "current",
+    "rows": [
+      {
+        "config": "Pretrained, neutral -> nearest class (baseline)",
+        "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+        "in_product": true,
+        "val_accuracy": 0.7748,
+        "val_macro_f1": 0.774,
+        "test_accuracy": 0.7767,
+        "test_macro_f1": 0.7757
+      },
+      {
+        "config": "Pretrained, validation-tuned threshold 0.725",
+        "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+        "in_product": true,
+        "val_accuracy": 0.7795,
+        "val_macro_f1": 0.7795,
+        "test_accuracy": 0.7806,
+        "test_macro_f1": 0.7806
+      },
+      {
+        "config": "Fine-tuned binary RoBERTa (ft01, experiment only)",
+        "model": "artifacts\\models\\roberta-s140-binary",
+        "in_product": false,
+        "val_accuracy": 0.8732,
+        "val_macro_f1": 0.8731,
+        "test_accuracy": 0.873,
+        "test_macro_f1": 0.873
+      },
+      {
+        "config": "Comparison model (evaluation only)",
+        "model": "siebert/sentiment-roberta-large-english",
+        "in_product": false,
+        "val_accuracy": 0.7528,
+        "val_macro_f1": 0.7523,
+        "test_accuracy": 0.752,
+        "test_macro_f1": 0.7515
+      },
+      {
+        "config": "Comparison model (evaluation only)",
+        "model": "distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+        "in_product": false,
+        "val_accuracy": 0.7075,
+        "val_macro_f1": 0.7032,
+        "test_accuracy": 0.7073,
+        "test_macro_f1": 0.7031
+      }
+    ],
+    "note": "Selection used validation only; each test number comes from a single logged test run (artifacts/reports/sentiment_test_log.jsonl)."
   }
 }

@@ -24,7 +24,8 @@ from ml.models import registry  # noqa: E402
 
 REQUIRED_LIBS = ["torch", "transformers", "sentence-transformers", "huggingface_hub", "accelerate", "bitsandbytes"]
 # Conservative space needed per model (GB) before download, including headroom.
-SPACE_NEEDED_GB = {config.SENTIMENT_MODEL: 1.0, config.EMBEDDING_MODEL: 0.5, config.QWEN_MODEL: 7.5, config.NER_MODEL: 1.0}
+SPACE_NEEDED_GB = {config.SENTIMENT_MODEL: 1.0, config.EMBEDDING_MODEL: 0.5, config.QWEN_MODEL: 7.5, config.NER_MODEL: 1.0,
+                   config.COMPARISON_MODELS[0]: 2.0, config.COMPARISON_MODELS[1]: 0.5}
 BASE_PATTERNS = ["*.json", "*.txt", "*.model", "tokenizer*", "vocab*", "merges.txt", "1_Pooling/*", "*.md"]
 
 
@@ -76,7 +77,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--with-optional", action="store_true", help="also download dslim/bert-base-NER")
     ap.add_argument("--skip-verify", action="store_true")
+    ap.add_argument("--comparison", action="store_true", help="only the evaluation-only sentiment comparison models")
     args = ap.parse_args()
+    if args.comparison:
+        args.skip_verify = True
 
     failures: list[str] = []
     manifest: dict = {"started_utc": datetime.now(timezone.utc).isoformat(), "python": sys.version.split()[0]}
@@ -101,7 +105,8 @@ def main() -> int:
         return 1
 
     config.HF_HUB_CACHE.mkdir(parents=True, exist_ok=True)
-    models = list(config.REQUIRED_MODELS) + (list(config.OPTIONAL_MODELS) if args.with_optional else [])
+    models = list(config.COMPARISON_MODELS) if args.comparison else \
+        list(config.REQUIRED_MODELS) + (list(config.OPTIONAL_MODELS) if args.with_optional else [])
     free_before = shutil.disk_usage("D:\\").free
     manifest["hf_env_in_python"] = {k: os.environ.get(k) for k in ["HF_HOME", "HF_HUB_CACHE", "TRANSFORMERS_CACHE"]}
     manifest["d_free_gb_before"] = gb(free_before)
@@ -142,7 +147,7 @@ def main() -> int:
     manifest["finished_utc"] = datetime.now(timezone.utc).isoformat()
     manifest["failures"] = failures
     manifest["status"] = "PASS" if not failures else "FAILED"
-    out = config.ARTIFACTS_DIR / "reports" / "model_download.json"
+    out = config.ARTIFACTS_DIR / "reports" / ("model_download_comparison.json" if args.comparison else "model_download.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"\nMODEL SETUP: {manifest['status']}  failures={failures}")
