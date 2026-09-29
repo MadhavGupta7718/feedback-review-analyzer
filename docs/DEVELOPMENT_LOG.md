@@ -551,6 +551,16 @@ emojis kept. Label mapping is by `id2label` name, not position. The old 5K sampl
 - Error-analysis examples (redacted tweets) were first written into the committed report. They were moved to the gitignored cache, so no dataset text is committed.
 - One frontend run timed out on the first test (59 s run while the GPU jobs were loading the machine). The re-run passed in 12.7 s.
 
+**Review datasets (follow-up, 2026-09-29).** The owner asked for a dataset on which accuracy is above 90%. Choosing a dataset *because* it
+scores well would be misleading, so the models were instead evaluated on labelled review data, which is the text type the product
+analyses. Every result is reported, including those below 90%.
+- **Script:** `scripts/evaluate_reviews.py`.
+- **Data:** Amazon polarity and Yelp polarity test splits (public, from Hugging Face), 20,000-review stratified samples, no tuning. The files are in `data/raw/reviews` (gitignored). `pyarrow` was added to read parquet.
+- **Product model:** Amazon **0.9156**, Yelp **0.8719**.
+- **Sentiment140 fine-tune:** 0.8805 and 0.8818. It is worse on Amazon, which confirms the decision not to put it in the product.
+- **siebert:** 0.9609 and 0.9447, but it was trained on Amazon and Yelp reviews. The result is flagged as contaminated and not claimed as unseen-domain.
+- Run time: 13 min for 4 models × 2 datasets.
+
 **Tests:**
 - New: `tests/unit/test_sentiment_eval.py` (8 tests) and `tests/models/test_sentiment_model.py` (13 tests, CPU and GPU).
 - Full Python suite: **156 passed**.

@@ -24,6 +24,10 @@ with instructions to run `scripts/download_models.py`. Measured values come from
   - The earlier 5,000-tweet sample gave 0.7646 and still reproduces exactly.
 
   See `docs/RESULTS.md` for per-class precision and recall, the confusion matrix and the full accuracy study.
+- **Labelled reviews** (out of domain for a tweet model; no tuning; `scripts/evaluate_reviews.py`):
+  - Amazon polarity: 0.9156 accuracy on 20,000 reviews.
+  - Yelp polarity: 0.8719, where 3-star reviews count as positive and 48% of reviews exceed the 128-token limit.
+  - The Sentiment140 fine-tuned variant scores lower on Amazon (0.8805), so its tweet gain does not carry over to reviews.
 - **Accuracy study (summary):**
   - Preprocessing variants, negation handling and PII redaction change validation accuracy by at most 0.1 pp. None was adopted.
   - Neutral → nearest class by probability (strategy C) is the scoring used. Mapping neutral to a fixed label, or excluding it, is biased or not comparable.

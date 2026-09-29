@@ -11,6 +11,8 @@ recorded in `docs/DEVELOPMENT_LOG.md`.
 |---|---|
 | Sentiment accuracy on the held-out Sentiment140 test split, 156,705 tweets (product model, binary, every example scored) | **0.7766** (macro F1 0.7757); **0.7806** with the validation-tuned binary threshold |
 | Separate fine-tuned binary RoBERTa (experiment, not in the pipeline), same test split | **0.8730** (macro F1 0.8730) |
+| Product model on labelled product reviews (Amazon polarity test, 20,000 reviews; no tuning on this data) | **0.9156** (macro F1 0.9156) |
+| Product model on labelled business reviews (Yelp polarity test, 20,000 reviews; no tuning on this data) | **0.8719** (macro F1 0.8711) |
 | PII recall on the synthetic batch (628 planted PII rows, 9 types) | **100%** (628/628), 0 false-positive rows out of 9,476 |
 | Evidence traceability audit (theme/complaint → review IDs) | PASS: 213 links checked, 0 problems |
 | Planted synthetic themes recovered | 12 of 13 (the missing one, 24 reviews, is below the minimum theme size) |
@@ -150,6 +152,30 @@ text is committed.
 `config.SENTIMENT_BINARY_THRESHOLD` and reported by `scripts/evaluate_sentiment.py` and the Sentiment Validation page, next
 to the unchanged `binary_forced` headline. The fine-tuned binary model stays an experiment: the product needs a neutral
 class, which a binary model cannot give.
+
+## Sentiment on labelled reviews (`review_eval.json`)
+
+Sentiment140 is tweets, while this project analyses product reviews, so the models were also scored on two public
+review test sets. They were downloaded to `data/raw/reviews` (gitignored), and no review text is written to any report.
+Each is a stratified random sample of 10,000 reviews per label (seed 42), preprocessed like production, including PII
+redaction, with a 128-token limit. **Nothing was tuned on these datasets.** Labels come from star ratings:
+- Amazon: 1–2 stars negative, 4–5 positive; 3-star reviews are not in the dataset.
+- Yelp: 1–2 stars negative, 3–4 positive.
+
+Accuracy (neutral → nearer class; macro F1 within 0.001 of accuracy unless shown):
+
+| Model | Amazon polarity | Yelp polarity |
+|---|---|---|
+| **Product: cardiffnlp twitter-roberta-base-sentiment-latest** | **0.9156** | **0.8719** (F1 0.8711) |
+| Product, Sentiment140 threshold 0.725 (not re-tuned) | 0.9149 | 0.8793 |
+| Fine-tuned binary RoBERTa (trained on Sentiment140 only) | 0.8805 | 0.8818 |
+| `distilbert-base-uncased-finetuned-sst-2-english` | 0.8889 | 0.8727 |
+| `siebert/sentiment-roberta-large-english`, **contaminated** (see below) | 0.9609 | 0.9447 |
+
+- **Product model on Amazon:** accuracy 0.9156 when every review is scored. It predicts neutral for 7.4% of reviews; excluding those gives 0.935 at 92.6% coverage. Strict 3-class accuracy is 0.8658. Negative recall is 0.895 and positive recall 0.937.
+- **Yelp is harder:** 3-star reviews count as positive, so lukewarm reviews carry a positive label. Negative recall is 0.795 against 0.949 for positive. Also, 48% of Yelp reviews exceed 128 tokens and are truncated (29% on Amazon; mean length 170 and 101 tokens).
+- **The Sentiment140 fine-tune does not transfer:** it is 3.5 pp *worse* than the product model on Amazon, and only 1.0 pp better on Yelp. Its +9.6 pp on tweets is mostly adaptation to Sentiment140's emoticon-derived labels. This supports keeping the pretrained model in the product.
+- **siebert is contaminated:** it scores highest, but its published training data includes Amazon and Yelp reviews, so these are not unseen-domain results. It is shown for reference only and is not a fair comparison.
 
 ## PII redaction (`pii_audit.json`)
 
