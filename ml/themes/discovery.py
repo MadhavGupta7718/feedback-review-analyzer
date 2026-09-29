@@ -12,7 +12,7 @@ import numpy as np
 
 from ml import config
 
-PLACEHOLDER_RE = re.compile(r"\[(?:EMAIL|URL|CARD|ORDER_ID|ACCOUNT_ID|CUSTOMER_ID|PHONE|USER|PERSON)\]")
+PLACEHOLDER_RE = re.compile(r"\[(?:EMAIL|URL|CARD|ORDER_ID|ACCOUNT_ID|CUSTOMER_ID|REFERENCE_ID|PHONE|USER|PERSON)\]")
 # Generic review words that say nothing about the topic.
 DOMAIN_STOPWORDS = {
     "app", "apps", "nimbus", "please", "fix", "asap", "really", "just", "honestly", "seriously", "ugh", "wow",

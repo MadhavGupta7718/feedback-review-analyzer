@@ -36,6 +36,11 @@ from ml.preprocessing.clean import clean_batch, clean_one
         ("09166279004 -- my new number", "PHONE", "09166279004"),
         ("@alice@DevineNews what happened", "USER", "DevineNews"),
         ("wrong username for Mr Brooks", "PERSON", "Brooks"),
+        # regressions found on Amazon software reviews
+        ("I contacted Corel # 5551234 about PSP 2023", "REFERENCE_ID", "5551234"),
+        ("support ticket number 88123456 is still open", "REFERENCE_ID", "88123456"),
+        ("my license key is ABCD-12345-XYZ9 and it failed", "REFERENCE_ID", "12345"),
+        ("serial no. 7712345 rejected", "REFERENCE_ID", "7712345"),
     ],
 )
 def test_each_pii_type_is_redacted(text, kind, secret):
@@ -55,6 +60,9 @@ def test_each_pii_type_is_redacted(text, kind, secret):
         "Order arrived late but support helped",
         "I voted like 1000000 times",
         "awww.. that's sad",
+        "#1 app for photo editing, 5 stars",
+        "Upgraded to version 2023 and the license works",
+        "refurbished laptop, installed in any case",
     ],
 )
 def test_no_false_positives_on_normal_reviews(text):
@@ -68,6 +76,9 @@ def test_leak_scanner_ignores_benign_patterns_but_flags_real_ones():
     assert scan("from 2026-06-01 to 2026-08-23 in training.1600000.processed") == []
     assert scan("on 2026-06-01 555 123 4567 called") == ["long_digit_run"]
     assert "long_digit_run" in scan("call 555 123 4567")
+    assert scan("Microsoft Edge Version 107.0.1418.62 (Official build)") == []
+    assert "long_digit_run" in scan("server at 192.168.100.200")
+    assert "long_digit_run" in scan("call 555.123.4567")
     assert "email" in scan("x@y.com")
     assert "url" in scan("see www.site.com")
 

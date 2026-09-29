@@ -242,7 +242,7 @@ The whole pipeline, from load through redaction, sentiment, embeddings, themes, 
 
 | Suite | Result |
 |---|---|
-| Python unit + integration + API (`pytest`) | 156 passed, 16 model tests deselected by default |
+| Python unit + integration + API (`pytest`) | 163 passed, 16 model tests deselected by default |
 | Model tests (`pytest -m models`) | Sentiment regression: 13 passed (CPU and GPU). Qwen brief: 3 passed |
 | API tests in a minimal environment with no torch or transformers (`requirements-api.txt`) | 37 passed |
 | Frontend (Vitest + Testing Library) | 18 passed; `tsc -b` clean; production build OK (largest chunk 359 kB) |

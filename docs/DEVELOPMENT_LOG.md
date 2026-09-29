@@ -561,6 +561,24 @@ analyses. Every result is reported, including those below 90%.
 - **siebert:** 0.9609 and 0.9447, but it was trained on Amazon and Yelp reviews. The result is flagged as contaminated and not claimed as unseen-domain.
 - Run time: 13 min for 4 models × 2 datasets.
 
+**Real Amazon reviews in the dashboard (follow-up, 2026-09-29).** Amazon polarity has no dates, so it cannot feed the Complaint
+Radar or drift. Dates are never invented.
+- **Source:** Amazon Reviews 2023 (`McAuley-Lab/Amazon-Reviews-2023`), category Software (app reviews), 1.87 GB, gitignored.
+- **Converter:** `scripts/prepare_amazon_reviews.py`. It keeps real timestamps and star ratings, drops user IDs and strips Amazon markup (`[[VIDEOID:…]]`, `<br />`).
+- **Window:** the final 8 weeks of the dataset were rejected. They hold only 1,321 reviews, falling from 280 to 28 a week as collection ends, which would look like a false decline. The 8 weeks ending 2022-11-30 were used instead (20,340 reviews, steady at 1,261–1,775 a week), sampled evenly in time down to 12,000.
+- **First pipeline run: traceability FAILED.** All evidence links were valid, but the leak scanner flagged 7 reviews:
+  - 5 were digits inside the video-embed markup;
+  - 1 was a browser version (`107.0.1418.62`);
+  - 1 was a support case number ("Corel # …").
+- **Fixes:**
+  - the converter removes the markup;
+  - the redactor gains `REFERENCE_ID` (case, ticket, licence, serial, confirmation numbers, and bare `# 12345+`);
+  - the scanner treats a 4-part dotted number as a version only if it cannot be an IPv4 address (IPs and dotted phone numbers are still flagged).
+  - 7 PII tests were added. The new rule matches none of the synthetic reviews, so the demo DB is unchanged.
+- **Second run:** 11,925 reviews in 128 s on the GPU; traceability PASS (64 links, 0 residual patterns). Results: 9 themes, top complaint "Download Software" (STABLE, +6%), "Music Songs" DECLINING (−73%), no emerging complaint. Real data has no planted patterns, and some theme names are weak ("Know", "Easy Best").
+- **Qwen brief** for this DB: rejected by the validator (unknown slots `C1.current`/`C1.previous`, and a stable theme described as declining), so nothing was stored and the page uses the template brief. This is the intended behaviour.
+- Output: `artifacts/cache/amazon_software.db` (gitignored); the committed demo DB is untouched.
+
 **Tests:**
 - New: `tests/unit/test_sentiment_eval.py` (8 tests) and `tests/models/test_sentiment_model.py` (13 tests, CPU and GPU).
 - Full Python suite: **156 passed**.

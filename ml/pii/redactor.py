@@ -20,6 +20,7 @@ PLACEHOLDERS = {
     "ORDER_ID": "[ORDER_ID]",
     "ACCOUNT_ID": "[ACCOUNT_ID]",
     "CUSTOMER_ID": "[CUSTOMER_ID]",
+    "REFERENCE_ID": "[REFERENCE_ID]",
     "PHONE": "[PHONE]",
     "USER": "[USER]",
     "PERSON": "[PERSON]",
@@ -36,6 +37,12 @@ _CARD = re.compile(r"(?<![\w-])(?:\d[ -]?){12,18}\d(?![\w-])")
 _ORDER = re.compile(r"(?i)\b(?:ORD(?:ER)?[-#]\s?\d{4,}|order\s*(?:#|no\.?|number|id)\s*[:#]?\s*[A-Z0-9-]*\d{4,}[A-Z0-9-]*)")
 _ACCOUNT = re.compile(r"(?i)\b(?:ACC(?:T|OUNT)?[-#]\s?\d{4,}|account\s*(?:#|no\.?|number|id)\s*(?:is\s*)?[:#]?\s*[A-Z0-9-]*\d{4,}[A-Z0-9-]*)")
 _CUSTOMER = re.compile(r"(?i)\b(?:CUST(?:OMER)?[-#]\s?\d{4,}|customer\s*(?:#|no\.?|number|id)\s*(?:is\s*)?[:#]?\s*[A-Z0-9-]*\d{4,}[A-Z0-9-]*)")
+# Support-case / ticket / licence / serial numbers tie a review to one customer's account; "# 5551234" is the bare form.
+_REFERENCE = re.compile(
+    r"(?i)\b(?:case|ticket|reference|ref|confirmation|claim|incident|request|tracking|serial|licen[cs]e|registration|product)"
+    r"\s*(?:#|no\.?|number|id|code|key)?\s*(?:is\s*)?[:#]?\s*[A-Z0-9-]*\d{5,}[A-Z0-9-]*"
+    r"|(?<![\w&])#\s?\d{5,}\b"
+)
 _PHONE = re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)[\s.-]?)?\d{2,5}(?:[\s.-]\d{2,8}){1,3}(?![\w])|(?<![\w])\+\d{7,14}(?![\w])")
 _BARE_PHONE = re.compile(r"(?<![\w.,/=&?-])\+?\d{10,12}(?![\w.,/-])")
 _HANDLE = re.compile(r"(?<![\w@\[])@[A-Za-z0-9_]{1,30}")
@@ -111,6 +118,7 @@ class PIIRedactor:
         s = sub(_ORDER, "ORDER_ID", s)
         s = sub(_ACCOUNT, "ACCOUNT_ID", s)
         s = sub(_CUSTOMER, "CUSTOMER_ID", s)
+        s = sub(_REFERENCE, "REFERENCE_ID", s)
         s = sub(_CARD, "CARD", s, check=lambda v: 13 <= _digits(v) <= 19)
         s = sub(_PHONE, "PHONE", s, check=self._looks_like_phone)
         s = sub(_BARE_PHONE, "PHONE", s, check=lambda v: len(set(v.lstrip("+"))) > 2)

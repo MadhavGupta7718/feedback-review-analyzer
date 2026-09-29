@@ -26,6 +26,9 @@ def _benign_digits(run: str) -> bool:
         return True
     if re.fullmatch(r"(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(19|20)\d{2}", digits):  # MMDDYYYY
         return True
+    parts = run.split(".")
+    if len(parts) == 4 and all(p.isdigit() for p in parts) and any(int(p) > 255 for p in parts):  # 107.0.1418.62, never an IPv4
+        return True
     return False
 
 

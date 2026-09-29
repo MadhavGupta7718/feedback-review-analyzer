@@ -26,7 +26,7 @@ dashboard, with enterprise guarantees:
 | Sentiment on labelled reviews (no tuning, n = 20,000 each) | Amazon polarity 0.9156, Yelp polarity 0.8719 |
 | Themes (synthetic, planted ground truth) | 27 themes, 12/13 planted themes recovered, ARI 0.64 |
 | Complaint Radar | detects planted NEW (Failing Payment 0 → 140), EMERGING (Battery +119%), STABLE, DECLINING |
-| Tests | 156 Python + 16 model tests (sentiment CPU/GPU, Qwen) + 18 frontend tests, all passing |
+| Tests | 163 Python + 16 model tests (sentiment CPU/GPU, Qwen) + 18 frontend tests, all passing |
 
 Everything measured is in `docs/RESULTS.md`, and the phase-by-phase audit trail, including failed attempts, is in
 `docs/DEVELOPMENT_LOG.md`.
@@ -55,6 +55,14 @@ uvicorn backend.app.main:app --port 8000
 
 To analyse your own reviews, run `python -m ml.pipeline --source reviews.csv`. The file needs a text column and a date
 column; see `docs/DATASET.md`.
+
+Real Amazon app reviews (Amazon Reviews 2023, Software category, with real dates):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\prepare_amazon_reviews.py data\raw\reviews\amazon2023\raw\review_categories\Software.jsonl --end 2022-11-30 --max-rows 12000
+.\.venv\Scripts\python.exe -m ml.pipeline --source data\raw\reviews\amazon_software_recent.csv --db artifacts\cache\amazon_software.db
+.\.venv\Scripts\python.exe scripts\run_demo.py --serve --db artifacts\cache\amazon_software.db
+```
 
 ## Documentation
 
