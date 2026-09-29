@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-09-27T16:13:38.036546+00:00",
+  "generated_at_utc": "2026-09-29T04:11:26.812297+00:00",
   "model": "Qwen/Qwen2.5-3B-Instruct",
   "plan": {
     "device": "cuda",
@@ -8,7 +8,7 @@
     "reason": "4.95 GB free VRAM < 7.2 GB needed for fp16; using 4-bit NF4 quantization"
   },
   "load": {
-    "load_seconds": 23.2,
+    "load_seconds": 23.99,
     "gpu_memory_allocated_gb": 1.92,
     "gpu_peak_memory_gb": 1.96
   },
@@ -21,7 +21,7 @@
         "causal language: causes"
       ],
       "raw": "SUMMARY:\nFrom {E1.previous} to {E1.current}, there has been a notable increase in complaints related to the \"Failing Payment\" theme, with {E1.current} mentions in the last {window_days} days. This trend is associated with a high {E1.negative_pct} of negative reviews, indicating dissatisfaction among users. Simultaneously, the \"Battery\" theme, which was previously emerging, now shows a significant rise in mentions, from {E2.previous} to {E2.current}. This growth suggests that users are increasingly concerned about battery performance issues. The largest complaint theme remains \"Crashes Phone,\" with {C1.negative} negative reviews, reflecting a stable situation but still a significant concern for users.\n\nINVESTIGATE:\n- Additional data on payment failures and their root causes.\n- Analysis of battery drain issues across different device models and operating systems.\n- User feedback on the stability of the \"Crashes Phone\" issue.",
-      "seconds": 52.73,
+      "seconds": 49.16,
       "prompt_tokens": 1250,
       "new_tokens": 198
     },
@@ -30,7 +30,7 @@
       "passed": true,
       "errors": [],
       "raw": "SUMMARY:\nFrom {E1.previous} to {E1.current}, there has been a notable increase in complaints related to the \"Failing Payment\" theme, with {E1.current} mentions in the last {window_days} days. This trend is associated with a high {E1.negative_pct} of negative reviews, indicating dissatisfaction among users. Simultaneously, the \"Battery\" theme, which was previously emerging, now shows a significant rise in mentions, from {E2.previous} to {E2.current}. This growth suggests that users are increasingly concerned about battery performance issues. The largest complaint theme remains \"Crashes Phone,\" with {C1.negative} negative reviews, reflecting a stable situation but still a significant concern for users.\n\nINVESTIGATE:\n- Additional data on payment failures and their trends over time.\n- Analysis of battery drain issues across different device models and operating systems.\n- User feedback on the stability of the \"Crashes Phone\" issue.",
-      "seconds": 55.59,
+      "seconds": 50.86,
       "prompt_tokens": 1483,
       "new_tokens": 199
     }

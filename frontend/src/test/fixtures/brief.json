@@ -1,6 +1,6 @@
 {
  "generation_path": "template",
- "generated_at_utc": "2026-09-27T15:04:32.946829+00:00",
+ "generated_at_utc": "2026-09-29T04:12:10.687534+00:00",
  "executive_summary": "Across 10,104 reviews (2026-06-01 to 2026-08-23), 54.1% are negative, 5.9% neutral and 40.1% positive, grouped into 27 themes. Emerging complaints in the latest 14-day window: Failing Payment (new: 140 mentions vs 0); Battery (+119%, 111 to 243 mentions). The largest complaint theme by negative volume is Crashes Phone (1,424 negative of 1,546 mentions). Declining: Login Password (-46%).",
  "top_complaints": [
   "Crashes Phone: 1,424 negative of 1,546 mentions (92.1% negative), window change -1%.",
@@ -47,6 +47,6 @@
   "Statistics describe feedback volume and sentiment; they do not establish causes.",
   "All quotes are redacted verbatims from the analysed batch.",
   "This batch is synthetic demonstration data, not real customer feedback.",
-  "Sentiment model accuracy on the labelled Sentiment140 sample: 76.5% (binary evaluation)."
+  "Sentiment model accuracy on the held-out labelled Sentiment140 test split: 77.7% (binary evaluation)."
  ]
 }

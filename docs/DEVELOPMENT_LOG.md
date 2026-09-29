@@ -540,7 +540,13 @@ emojis kept. Label mapping is by `id2label` name, not position. The old 5K sampl
 **Failed attempts and problems**
 - The first fine-tuning launch crashed on step 1 with `shape '[-1, 3]' is invalid`. Replacing the classifier head updated `config.num_labels`, but not the model's own `num_labels` attribute that the loss uses. Fixed by setting both.
 - The fine-tuning took longer than budgeted. A run at batch 32 took 37 min alone on the GPU, and 45–66 min while inference jobs shared it. The batch-16 run took 79 min. An attempt to stop the process after three runs was blocked, so the full planned matrix (5 runs, 4.4 h) ran to the end.
-- Updating the `sentiment_validation` report stored in `artifacts/analytics.db`, and regenerating the Qwen brief (whose caveat quotes the accuracy), were blocked while the owner was away. Until that step runs, the committed DB still serves the earlier 5K-sample report.
+- Updating the `sentiment_validation` report stored in `artifacts/analytics.db`, and regenerating the Qwen brief (whose caveat quotes the accuracy), were blocked while the owner was away. The owner approved the step the next morning:
+  - the DB report was replaced;
+  - the brief caveat now reads "held-out labelled Sentiment140 test split: 77.7%";
+  - the Qwen brief was regenerated and passed validation;
+  - the frontend fixtures were re-dumped from the API.
+
+  After that: pytest 156 passed, frontend 18 passed.
 - The first `evaluate_sentiment.py` run compared a batch-128 run with a batch-64 run and reported "identical labels: false" (0.06% of labels differ from fp16 padding). The dashboard would have shown "reproducible: no". The check now repeats identical settings (identical, max difference 0.0) and reports the batch-size agreement separately (0.9994).
 - Error-analysis examples (redacted tweets) were first written into the committed report. They were moved to the gitignored cache, so no dataset text is committed.
 - One frontend run timed out on the first test (59 s run while the GPU jobs were loading the machine). The re-run passed in 12.7 s.

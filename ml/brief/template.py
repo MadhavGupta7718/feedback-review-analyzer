@@ -60,7 +60,7 @@ def template_brief(facts: dict) -> dict:
     if facts.get("dataset", {}).get("kind") == "synthetic":
         caveats.append("This batch is synthetic demonstration data, not real customer feedback.")
     if facts.get("sentiment_accuracy") is not None:
-        caveats.append(f"Sentiment model accuracy on the labelled Sentiment140 sample: {facts['sentiment_accuracy'] * 100:.1f}% (binary evaluation).")
+        caveats.append(f"Sentiment model accuracy on the held-out labelled Sentiment140 test split: {facts['sentiment_accuracy'] * 100:.1f}% (binary evaluation).")
     return {
         "generation_path": "template",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),

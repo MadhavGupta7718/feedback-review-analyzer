@@ -8,7 +8,7 @@
    "dtype": "float16"
   },
   "sentence-transformers/all-MiniLM-L6-v2": {
-   "revision": null,
+   "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
    "device": "cuda",
    "purpose": "embeddings / themes",
    "dim": 384
@@ -76,47 +76,47 @@
  "performance": {
   "stages": {
    "load": {
-    "seconds": 0.321,
-    "rss_mb": 560.2
+    "seconds": 0.103,
+    "rss_mb": 560.1
    },
    "validate_redact_clean": {
-    "seconds": 3.413,
-    "rss_mb": 571.3
+    "seconds": 2.992,
+    "rss_mb": 571.2
    },
    "load_sentiment_model": {
-    "seconds": 13.445,
-    "rss_mb": 839.4
+    "seconds": 13.738,
+    "rss_mb": 840.1
    },
    "sentiment": {
-    "seconds": 10.624,
-    "rss_mb": 1323.1
+    "seconds": 10.715,
+    "rss_mb": 1323.6
    },
    "embeddings": {
-    "seconds": 0.019,
-    "rss_mb": 1334.8
+    "seconds": 0.047,
+    "rss_mb": 1335.2
    },
    "themes": {
-    "seconds": 7.465,
-    "rss_mb": 1365.7
+    "seconds": 8.022,
+    "rss_mb": 1365.6
    },
    "complaint_radar": {
-    "seconds": 0.081,
+    "seconds": 0.091,
     "rss_mb": 1366.3
    },
    "drift": {
-    "seconds": 0.081,
-    "rss_mb": 1366.5
+    "seconds": 0.097,
+    "rss_mb": 1366.4
    },
    "traceability_audit": {
-    "seconds": 0.251,
-    "rss_mb": 1366.5
+    "seconds": 0.272,
+    "rss_mb": 1366.4
    }
   },
-  "total_seconds": 35.92,
-  "peak_rss_mb": 1366.5,
+  "total_seconds": 36.33,
+  "peak_rss_mb": 1366.4,
   "device": "cuda",
   "n_reviews": 10104,
-  "sentiment_reviews_per_sec": 952.1,
+  "sentiment_reviews_per_sec": 944.1,
   "peak_gpu_mem_gb": 0.538
  },
  "brief_engine": {
@@ -127,5 +127,5 @@
   "last_error": null,
   "live_generation_possible": true
  },
- "precomputed_qwen_brief": false
+ "precomputed_qwen_brief": true
 }

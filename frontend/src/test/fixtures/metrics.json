@@ -59,7 +59,7 @@
   "seed": 42,
   "note": "Deterministic synthetic data with planted patterns. Not real customer reviews."
  },
- "generated_at_utc": "2026-09-27T14:39:39.437064+00:00",
- "pipeline_seconds": 35.92,
+ "generated_at_utc": "2026-09-27T16:11:00.129572+00:00",
+ "pipeline_seconds": 36.33,
  "device": "cuda"
 }
