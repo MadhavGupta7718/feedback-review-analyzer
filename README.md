@@ -22,10 +22,11 @@ dashboard, with enterprise guarantees:
 | | |
 |---|---|
 | End-to-end pipeline, 10,104 reviews | 46.7 s on the RTX 4050 vs 455.4 s on the CPU (9.8×) |
-| Sentiment (Sentiment140, n = 5,000) | accuracy 0.7646, macro F1 0.7634 (binary); 0.6014 strict 3-class |
+| Sentiment, held-out Sentiment140 test split (n = 156,705) | accuracy 0.7766, macro F1 0.7757 (binary); 0.7806 with the validation-tuned threshold; 0.6024 strict 3-class |
+| Sentiment on labelled reviews (no tuning, n = 20,000 each) | Amazon polarity 0.9156, Yelp polarity 0.8719 |
 | Themes (synthetic, planted ground truth) | 27 themes, 12/13 planted themes recovered, ARI 0.64 |
 | Complaint Radar | detects planted NEW (Failing Payment 0 → 140), EMERGING (Battery +119%), STABLE, DECLINING |
-| Tests | 148 Python + 3 GPU model tests + 18 frontend tests, all passing |
+| Tests | 156 Python + 16 model tests (sentiment CPU/GPU, Qwen) + 18 frontend tests, all passing |
 
 Everything measured is in `docs/RESULTS.md`, and the phase-by-phase audit trail, including failed attempts, is in
 `docs/DEVELOPMENT_LOG.md`.
