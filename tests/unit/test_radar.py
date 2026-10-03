@@ -63,9 +63,39 @@ def test_high_volume_low_growth_is_stable():
 
 
 def test_low_volume_high_growth_is_not_emerging():
-    it = item(windows(2, 10))  # +400% but only 10 mentions
-    assert it["growth_pct"] == 400.0
+    it = item(windows(2, 5))  # +150% but only 5 mentions (below scaled floor)
+    assert it["growth_pct"] == 150.0
     assert it["status"] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_soft_decline_with_falling_trend():
+    """Mild window drop + falling weekly trend → DECLINING (general gradual-decline rule)."""
+    # Build a falling weekly series across ~8 weeks, with prev/cur windows ~-18%
+    reviews = (
+        make(80, 49, 55, start_id=0)
+        + make(70, 42, 48, start_id=100)
+        + make(60, 35, 41, start_id=200)
+        + make(55, 28, 34, start_id=300)
+        + make(50, 21, 27, start_id=400)
+        + make(48, 14.01, 20.99, start_id=500)   # previous window-ish
+        + make(40, 7.01, 13.99, start_id=600)
+        + make(39, 0.01, 6.99, start_id=700)     # current window-ish
+    )
+    it = item(reviews)
+    assert it["growth_pct"] is not None and it["growth_pct"] <= -15.0
+    assert it["growth_pct"] > -25.0  # not the hard decline cut
+    assert it["trend"] == "falling"
+    assert it["status"] == "DECLINING"
+    assert any("soft decline" in r for r in it["reasons"])
+
+
+def test_mild_drop_without_falling_trend_stays_stable():
+    """~-18% but flat/noisy weekly trend must not become DECLINING."""
+    it = item(windows(100, 84))  # -16%, uniform-ish within windows → not a multi-week fall
+    assert -25.0 < it["growth_pct"] <= -15.0
+    # Without a clear falling weekly trend, stay STABLE
+    if it["trend"] != "falling":
+        assert it["status"] == "STABLE"
 
 
 def test_high_volume_high_negative_ratio_emerging_and_priority_math():
@@ -83,7 +113,7 @@ def test_positive_theme_growth_is_not_a_complaint():
 
 def test_insufficient_negative_evidence():
     reviews = make(20, 29, 40) + make(40, 14.01, 27.99, start_id=1000)
-    reviews += make(98, 0.01, 13.99, sentiment="neutral", start_id=5000) + make(2, 0.01, 13.99, start_id=9000)
+    reviews += make(99, 0.01, 13.99, sentiment="neutral", start_id=5000) + make(1, 0.01, 13.99, start_id=9000)
     it = item(reviews, min_negative_ratio=0.0)
     assert it["status"] == "INSUFFICIENT_EVIDENCE"
     assert any("negative evidence" in r for r in it["reasons"])

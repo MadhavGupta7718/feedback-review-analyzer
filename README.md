@@ -7,10 +7,10 @@ dashboard, with enterprise guarantees:
 
 - **Traceable:** every theme and complaint links to real review IDs and redacted verbatims; an audit checks every link on
   every run.
-- **Validated:** sentiment accuracy is measured against 5,000 labelled Sentiment140 tweets (0.7646 binary accuracy,
-  reported alongside two stricter scorings).
-- **Private:** PII is redacted before anything reaches the database, API, dashboard, logs or LLM (100% recall on 628
-  planted PII rows, 0 false-positive rows).
+- **Validated:** accuracy and recall are scored **inside each analytics DB** from that batch only (planted labels on
+  Nimbus; star-rating weak labels on review CSVs). No cross-dataset metrics on the dashboard.
+- **Private:** PII is redacted before anything reaches the database, API, dashboard, logs or LLM (100% recall on planted
+  PII rows in the synthetic batch).
 - **Monitored:** sentiment, theme mix, volume and review-length drift are tracked between time windows.
 - **Complaint Radar:** flags complaints that are *growing*, not just the biggest ones, and shows the exact rule and
   calculation behind every flag (**View why**).
@@ -21,12 +21,10 @@ dashboard, with enterprise guarantees:
 
 | | |
 |---|---|
-| End-to-end pipeline, 10,104 reviews | 46.7 s on the RTX 4050 vs 455.4 s on the CPU (9.8×) |
-| Sentiment, held-out Sentiment140 test split (n = 156,705) | accuracy 0.7766, macro F1 0.7757 (binary); 0.7806 with the validation-tuned threshold; 0.6024 strict 3-class |
-| Sentiment on labelled reviews (no tuning, n = 20,000 each) | Amazon polarity 0.9156, Yelp polarity 0.8719 |
-| Themes (synthetic, planted ground truth) | 27 themes, 12/13 planted themes recovered, ARI 0.64 |
-| Complaint Radar | detects planted NEW (Failing Payment 0 → 140), EMERGING (Battery +119%), STABLE, DECLINING |
-| Tests | 163 Python + 16 model tests (sentiment CPU/GPU, Qwen) + 18 frontend tests, all passing |
+| End-to-end pipeline (Nimbus mock, ~21K reviews) | GPU-accelerated on RTX 4050; metrics stored in that DB |
+| Sentiment (this-batch 3-class) | accuracy + macro recall (neg/neu/pos) scored only on reviews in the open DB |
+| Sentiment on public review sets (offline study) | Amazon polarity ~0.92, Yelp polarity ~0.87 (not mixed into other dashboards) |
+| Themes / Radar / PII (synthetic planted truth) | per-DB theme recall, radar pattern recall, PII recall → mean available recall |
 
 Everything measured is in `docs/RESULTS.md`, and the phase-by-phase audit trail, including failed attempts, is in
 `docs/DEVELOPMENT_LOG.md`.
@@ -82,15 +80,15 @@ Real Amazon app reviews (Amazon Reviews 2023, Software category, with real dates
 
 | Dataset | Use |
 |---|---|
-| Sentiment140 (1.6M tweets, binary labels) | Dataset validation, sentiment accuracy, real-text PII audit |
-| Synthetic "Nimbus" app reviews (deterministic, seed 42) | 10K demo batch with planted ground truth for themes, Complaint Radar, drift and PII |
+| Synthetic "Nimbus" app reviews (deterministic, seed 42, ~21K) | Demo batch with planted ground truth for themes, Complaint Radar, drift, PII and 3-class sentiment |
+| Amazon / other review CSVs | Separate analytics DB per upload; metrics from that file only |
 
 Raw data is never committed or served. See `docs/DATASET.md`.
 
 ## Known limitations
 
 - Theme and radar quality is measured on synthetic reviews generated from templates, so results on real reviews will be lower.
-- Sentiment140 has no neutral class, and the model's neutral recall on the synthetic reviews is only 0.33.
+- Neutral sentiment recall depends on the batch; star-rating weak labels (3★ = neutral) are noisy on real CSVs.
 - Names in free text without a cue ("this is X", "Mr X") are not redacted.
 - Live Qwen needs a CUDA GPU and takes 1–3 minutes; CPU hosts serve the stored, validated brief.
 - Radar statuses show association, not cause.

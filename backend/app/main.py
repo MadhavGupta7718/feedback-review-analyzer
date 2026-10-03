@@ -222,16 +222,29 @@ def data_health():
     with db.connect() as con:
         dh = db.report(con, "data_health")
         pii = db.report(con, "pii_audit") or {}
-        dv = db.report(con, "dataset_validation") or {}
         trace = db.report(con, "traceability")
+        be = db.report(con, "batch_evaluation") or {}
     s = pii.get("synthetic", {})
+    # Prefer per-batch PII recall stored in this DB; fall back to offline synthetic audit file if present
+    batch_pii = (be.get("pii") or {})
     return {**(dh or {}), "traceability": trace,
-            "pii_audit": {"overall_recall": s.get("overall_recall"), "recall_by_type": s.get("recall_by_type"),
-                          "false_positive_row_rate": s.get("false_positive_row_rate")},
-            "sentiment140_validation": {"rows": dv.get("report", {}).get("rows"), "status": dv.get("status"),
-                                        "label_distribution": dv.get("report", {}).get("label_distribution"),
-                                        "duplicate_ids": dv.get("report", {}).get("duplicate_ids"),
-                                        "date_min": dv.get("report", {}).get("date_min"), "date_max": dv.get("report", {}).get("date_max")}}
+            "pii_audit": {
+                "overall_recall": batch_pii.get("overall_recall", s.get("overall_recall")),
+                "recall_by_type": batch_pii.get("recall_by_type", s.get("recall_by_type")),
+                "false_positive_row_rate": s.get("false_positive_row_rate"),
+            },
+            "batch_evaluation": {
+                "sentiment_macro_recall": (be.get("overall_recall") or {}).get("sentiment_macro_recall"),
+                "theme_recall": (be.get("overall_recall") or {}).get("theme_recall"),
+                "radar_recall": (be.get("overall_recall") or {}).get("radar_recall"),
+                "pii_recall": (be.get("overall_recall") or {}).get("pii_recall"),
+                "mean_available_recalls": (be.get("overall_recall") or {}).get("mean_available_recalls"),
+            },
+            "dataset_validation": {
+                "note": "Per-batch only. Tweet-corpus (Sentiment140) validation was removed from the product path.",
+                "rows": (dh or {}).get("processed_reviews"),
+                "status": (trace or {}).get("status"),
+            }}
 
 
 @app.get("/model-info")

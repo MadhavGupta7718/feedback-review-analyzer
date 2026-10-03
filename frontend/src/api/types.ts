@@ -213,6 +213,15 @@ export interface AccuracyStudy {
   note: string;
 }
 
+export interface BatchOverallRecall {
+  sentiment_macro_recall?: number | null;
+  theme_recall?: number | null;
+  radar_recall?: number | null;
+  pii_recall?: number | null;
+  mean_available_recalls?: number | null;
+  note?: string;
+}
+
 export interface SentimentValidation {
   evaluation_date_utc: string;
   model: string;
@@ -220,24 +229,37 @@ export interface SentimentValidation {
   dataset: string;
   device: string;
   gpu?: string | null;
-  sample: { seed: number; size: number; label_counts: Record<string, number>; selection: string };
+  sample: { seed?: number; size: number; label_counts: Record<string, number>; selection: string };
   ground_truth_note: string;
+  ground_truth_source?: string;
   methodology: string;
   metrics: {
-    binary_forced: BinaryMetrics;
-    strict_3class: BinaryMetrics;
-    abstain: BinaryMetrics;
+    binary_forced?: BinaryMetrics;
+    strict_3class?: BinaryMetrics;
+    abstain?: BinaryMetrics;
     neutral_prediction_rate: number;
-    confusion_true2_pred3: Record<"negative" | "positive", Record<Sentiment, number>>;
+    confusion_true2_pred3?: Record<"negative" | "positive", Record<Sentiment, number>>;
     binary_threshold?: BinaryMetrics & { threshold: number };
+    three_class?: { n: number; accuracy: number; macro_f1: number; per_class: Record<Sentiment, ClassMetrics>; confusion: Record<Sentiment, Record<Sentiment, number>> };
+    per_class?: Record<Sentiment, ClassMetrics>;
+    confusion_3x3?: Record<Sentiment, Record<Sentiment, number>>;
+    macro_recall?: number;
+    headline_accuracy?: number;
+    headline_macro_recall?: number;
+  };
+  batch_evaluation?: {
+    themes?: Record<string, unknown> | null;
+    radar?: Record<string, unknown> | null;
+    pii?: Record<string, unknown> | null;
+    overall_recall?: BatchOverallRecall | null;
   };
   accuracy_study?: AccuracyStudy | null;
-  mean_confidence: number;
+  mean_confidence?: number;
   reproducibility?: { identical_labels_between_runs: boolean; max_abs_prob_diff: number };
   cpu_vs_gpu_label_agreement?: number;
   benchmark?: BenchmarkRow[];
   synthetic_3class?: {
-    note: string;
+    note?: string;
     n: number;
     accuracy: number;
     per_class: Record<Sentiment, ClassMetrics>;
@@ -310,7 +332,20 @@ export interface DataHealth {
   };
   traceability: { links_checked: number; problems: unknown[]; reviews_with_residual_pii_pattern: number; status: string } | null;
   pii_audit: { overall_recall: number | null; recall_by_type: Record<string, string> | null; false_positive_row_rate: number | null };
-  sentiment140_validation: {
+  batch_evaluation?: BatchOverallRecall & {
+    sentiment_macro_recall?: number | null;
+    theme_recall?: number | null;
+    radar_recall?: number | null;
+    pii_recall?: number | null;
+    mean_available_recalls?: number | null;
+  };
+  dataset_validation?: {
+    note?: string;
+    rows?: number | null;
+    status?: string | null;
+  };
+  /** @deprecated removed from product path; kept optional for old fixtures */
+  sentiment140_validation?: {
     rows: number | null;
     status: string | null;
     label_distribution: Record<string, number> | null;

@@ -85,10 +85,19 @@ export function DataHealth() {
             {fmtInt(h.theme_stats.reassigned_by_nearest_centroid)} reassigned to the nearest theme, {fmtInt(h.theme_stats.unassigned)} ({fmtRatio(h.theme_stats.unassigned_fraction)}) left
             unassigned.
           </p>
-          <h3 className="section-title">Sentiment140 file validation</h3>
+          <h3 className="section-title">This-batch evaluation</h3>
           <p className="small">
-            {fmtInt(h.sentiment140_validation.rows)} rows · status {h.sentiment140_validation.status ?? "–"} · {fmtInt(h.sentiment140_validation.duplicate_ids)} label-conflicting duplicate IDs excluded ·{" "}
-            {fmtDate(h.sentiment140_validation.date_min)} → {fmtDate(h.sentiment140_validation.date_max)}
+            {h.dataset_validation?.note ?? "Metrics are computed for this analytics database only."}
+            {h.batch_evaluation?.mean_available_recalls != null && (
+              <>
+                {" "}
+                Mean available recall <strong>{fmtRatio(h.batch_evaluation.mean_available_recalls)}</strong>
+                {h.batch_evaluation.sentiment_macro_recall != null && <> · sentiment {fmtRatio(h.batch_evaluation.sentiment_macro_recall)}</>}
+                {h.batch_evaluation.theme_recall != null && <> · themes {fmtRatio(h.batch_evaluation.theme_recall)}</>}
+                {h.batch_evaluation.radar_recall != null && <> · radar {fmtRatio(h.batch_evaluation.radar_recall)}</>}
+                {h.batch_evaluation.pii_recall != null && <> · PII {fmtRatio(h.batch_evaluation.pii_recall)}</>}
+              </>
+            )}
           </p>
         </Card>
       </div>

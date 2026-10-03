@@ -1,10 +1,9 @@
 """Deterministic synthetic app-store review generator for "Nimbus" (a fictional shopping + wallet app).
 
 Why synthetic data exists in this project
-  Sentiment140 is 2009 tweets with binary labels and no product themes, so it cannot tell us whether
-  theme discovery, Complaint Radar or PII redaction actually work. This generator plants KNOWN
-  ground truth (theme per review, sentiment per review, PII per review, and scripted temporal
-  patterns) so every downstream stage can be scored against it. All output is marked
+  Real CSVs often lack theme / Complaint-Radar ground truth. This generator plants KNOWN labels
+  (theme, sentiment, PII, and scripted temporal patterns) so every downstream stage can be scored
+  against the same batch that is stored in that batch's analytics DB. All output is marked
   source="synthetic"; nothing generated here is ever presented as a real customer review.
 
 Planted temporal patterns (12 weekly periods)
@@ -26,7 +25,8 @@ import numpy as np
 START_DATE = datetime(2026, 6, 1)
 N_WEEKS = 12
 
-# Expected reviews per week for each theme (Poisson means). Index 0 = week 1.
+# Expected reviews per week for each theme (Poisson means at scale=1 ≈ 10K rows). Index 0 = week 1.
+# Default generate(scale=2) ≈ 20K rows for a richer demo and stabler recall estimates.
 WEEKLY_MEANS: dict[str, list[float]] = {
     "battery_drain":        [30, 30, 30, 30, 30, 30, 30, 30, 45, 65, 110, 140],
     "payment_failure":      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 95],
@@ -39,8 +39,12 @@ WEEKLY_MEANS: dict[str, list[float]] = {
     "subscription_pricing": [40] * 12,
     "ui_praise":            [90] * 12,
     "general_praise":       [170] * 12,
-    "dark_mode_request":    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 5],
-    "neutral_mixed":        [62] * 12,
+    "dark_mode_request":    [2, 2, 2, 2, 2, 3, 3, 4, 4, 5, 6, 8],
+    "neutral_mixed":        [90] * 12,
+    # richer long-tail themes (scale>1 makes them large enough for clustering)
+    "search_broken":        [18] * 12,
+    "photo_upload":         [22] * 12,
+    "privacy_ads":          [15] * 12,
 }
 
 # P(negative), P(neutral), P(positive) per theme
@@ -58,6 +62,9 @@ SENTIMENT_MIX: dict[str, tuple[float, float, float]] = {
     "general_praise": (0.01, 0.06, 0.93),
     "dark_mode_request": (0.10, 0.70, 0.20),
     "neutral_mixed": (0.10, 0.80, 0.10),
+    "search_broken": (0.80, 0.15, 0.05),
+    "photo_upload": (0.78, 0.16, 0.06),
+    "privacy_ads": (0.70, 0.22, 0.08),
 }
 
 PHRASES: dict[str, dict[str, list[str]]] = {
@@ -279,39 +286,96 @@ PHRASES: dict[str, dict[str, list[str]]] = {
     "dark_mode_request": {
         "negative": ["no dark mode in 2026 is unacceptable"],
         "neutral": [
-            "please add a dark mode",
-            "would love a dark theme option",
-            "any plans for dark mode?",
+            "feature request only: add a dark mode setting",
+            "neutral note: dark theme option would be useful someday",
+            "curious whether a dark mode toggle is planned",
+            "dark mode is a common request, no urgency stated",
         ],
         "positive": ["great app, dark mode would make it perfect"],
-        "detail": ["", "My eyes would thank you.", "Most apps have it now."],
+        "detail": ["", "Not a complaint, just a wishlist item.", "Most apps have it now."],
     },
     "neutral_mixed": {
         "negative": ["it's just meh, lots of small annoyances"],
         "neutral": [
-            "it's okay, does what it says",
-            "average app, some good some bad",
-            "not bad, not great",
-            "works fine for basic shopping",
-            "it's alright I guess",
-            "some features are useful, others not so much",
+            "mixed feelings, some parts okay some not",
+            "neither impressed nor disappointed, just average",
+            "neutral experience overall, nothing stood out",
+            "so-so app, average in every way",
+            "three-star experience, neither good nor bad",
+            "balanced review: equal pros and cons",
+            "indifferent about this app, it is fine",
+            "okay but unremarkable, middle of the road",
+            "neither recommend nor discourage, just okay",
+            "mediocre but usable, no strong opinion",
         ],
         "positive": ["pretty good overall, a few rough edges"],
-        "detail": ["", "Might keep using it.", "We'll see.", "Three stars for now."],
+        "detail": ["", "Giving three stars.", "No strong opinion either way.", "Average for the category."],
+    },
+    "search_broken": {
+        "negative": [
+            "in-app search returns nothing useful",
+            "search is broken, cannot find products I know exist",
+            "the search bar never finds the right item",
+            "product search shows irrelevant results every time",
+            "search feature is useless after the update",
+            "typing in search freezes the app",
+        ],
+        "neutral": [
+            "search results are mixed, sometimes okay",
+            "search works for popular items but not niche ones",
+        ],
+        "positive": [
+            "search is usually fine, one miss today",
+        ],
+        "detail": ["", "Tried brand names and SKUs.", "Happens on both spelling variants.", "Filters make it worse."],
+    },
+    "photo_upload": {
+        "negative": [
+            "cannot upload photos to my listing",
+            "image upload fails with a generic error",
+            "photos get stuck at 99% when uploading",
+            "camera upload crashes every time",
+            "product pictures will not sync to the gallery",
+        ],
+        "neutral": [
+            "photo upload is slow but eventually works",
+            "had to retry image upload twice",
+        ],
+        "positive": [
+            "photo upload usually works, failed once",
+        ],
+        "detail": ["", "Tried wifi and mobile data.", "HEIC and JPG both fail.", "Happens on the latest version."],
+    },
+    "privacy_ads": {
+        "negative": [
+            "too many personalised ads after I opted out",
+            "privacy settings do nothing, still tracked for ads",
+            "targeted ads feel invasive in this app",
+            "I disabled ad personalisation but ads got worse",
+            "ads follow me across screens, creepy tracking",
+        ],
+        "neutral": [
+            "ads are frequent but expected for a free app",
+            "privacy page is confusing about ad tracking",
+        ],
+        "positive": [
+            "like the app, wish there were fewer ads",
+        ],
+        "detail": ["", "Checked privacy toggles twice.", "Started after the ads SDK update.", "No clear opt-out."],
     },
 }
 
 OPENERS = {
     "negative": ["", "", "Ugh.", "Really disappointed.", "Terrible experience.", "Not happy.", "Seriously,", "Honestly,", "Worst update ever."],
-    "neutral": ["", "", "Hmm.", "Okay so", "FYI", "Just a note:"],
+    "neutral": ["", "", "Neutral take:", "For the record,", "FYI,", "Quick note:"],
     "positive": ["", "", "Wow!", "Honestly,", "So happy.", "Great news:"],
 }
 CLOSERS = {
     "negative": ["", "", "Please fix this asap.", "Uninstalling until it's fixed.", "1 star until resolved.", "Very frustrating!!", "Fix it please."],
-    "neutral": ["", "", "Otherwise fine.", "Hope it improves.", "Thanks."],
+    "neutral": ["", "", "No strong feelings either way.", "Three stars.", "That's all."],
     "positive": ["", "", "Thanks!", "Love it.", "Keep it up!"],
 }
-EMOJI = {"negative": ["😡", "😤", "👎", "🔋💀", "😞"], "neutral": ["🤷", "🙂"], "positive": ["❤️", "👍", "😍", "🎉"]}
+EMOJI = {"negative": ["😡", "😤", "👎", "🔋💀", "😞"], "neutral": ["", "🤷"], "positive": ["❤️", "👍", "😍", "🎉"]}
 RATING = {"negative": [1, 1, 2], "neutral": [3], "positive": [4, 5, 5]}
 
 FIRST_NAMES = ["John", "Priya", "Maria", "Chen", "Aisha", "David", "Emma", "Rahul", "Sofia", "Liam", "Fatima", "Carlos"]
@@ -370,14 +434,19 @@ def _pii_snippet(rng: np.random.Generator) -> tuple[str, str]:
     return f"@{first.lower()}_{last.lower()}{rng.integers(1, 999)} said the same", kind
 
 
-def generate(seed: int = 42, pii_rate: float = 0.06, duplicate_rate: float = 0.008) -> list[SyntheticReview]:
+def generate(seed: int = 42, pii_rate: float = 0.06, duplicate_rate: float = 0.008,
+             scale: float = 2.0) -> list[SyntheticReview]:
+    """Generate planted Nimbus reviews. scale=1 ≈ 10K rows; scale=2 (default) ≈ 20K richer rows."""
+    if scale <= 0:
+        raise ValueError("scale must be positive")
     rng = np.random.default_rng(seed)
     records: list[tuple[datetime, str, str, str]] = []  # (timestamp, theme, sentiment, text-ish)
     reviews: list[SyntheticReview] = []
 
     for week in range(N_WEEKS):
         for theme, means in WEEKLY_MEANS.items():
-            n = int(rng.poisson(means[week])) if means[week] > 0 else 0
+            mean = means[week] * scale
+            n = int(rng.poisson(mean)) if mean > 0 else 0
             for _ in range(n):
                 ts = START_DATE + timedelta(weeks=week, seconds=int(rng.integers(0, 7 * 24 * 3600)))
                 sentiment = str(rng.choice(["negative", "neutral", "positive"], p=SENTIMENT_MIX[theme]))

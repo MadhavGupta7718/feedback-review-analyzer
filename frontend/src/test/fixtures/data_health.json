@@ -118,15 +118,16 @@
   },
   "false_positive_row_rate": 0.0
  },
- "sentiment140_validation": {
-  "rows": 1600000,
-  "status": "PASS",
-  "label_distribution": {
-   "0": 800000,
-   "4": 800000
-  },
-  "duplicate_ids": 1685,
-  "date_min": "2009-04-06T22:19:45",
-  "date_max": "2009-06-25T10:28:31"
+ "batch_evaluation": {
+  "sentiment_macro_recall": 0.7973,
+  "theme_recall": 1.0,
+  "radar_recall": 0.8,
+  "pii_recall": 1.0,
+  "mean_available_recalls": 0.8993
+ },
+ "dataset_validation": {
+  "note": "Per-batch only. Tweet-corpus (Sentiment140) validation was removed from the product path.",
+  "rows": 21955,
+  "status": "PASS"
  }
 }

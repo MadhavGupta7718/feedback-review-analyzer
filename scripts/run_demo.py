@@ -74,18 +74,26 @@ def walkthrough(db: Path) -> None:
         for e in [x for x in ev if x["evidence_kind"] == "radar_evidence"][:3]:
             print(wrap(f"[{e['review_id']}] \"{e['text']}\"", "      "))
 
-    h("3. SENTIMENT VALIDATION (held-out labelled Sentiment140 test split)")
+    h("3. SENTIMENT VALIDATION (this database only)")
     sv = c.get("/sentiment/validation").json()
     mt = sv["metrics"]
-    print(wrap(f"{sv['model']} on {sv['sample']['size']:,} labelled tweets: binary accuracy {mt['binary_forced']['accuracy'] * 100:.1f}% "
-               f"(macro F1 {mt['binary_forced']['macro_f1']:.3f}); abstaining on neutral {mt['abstain']['accuracy'] * 100:.1f}% at "
-               f"{mt['abstain']['coverage'] * 100:.1f}% coverage; strict 3-class {mt['strict_3class']['accuracy'] * 100:.1f}%."))
+    acc = mt.get("headline_accuracy") or (mt.get("three_class") or {}).get("accuracy") or (mt.get("strict_3class") or {}).get("accuracy")
+    mrec = mt.get("macro_recall") or mt.get("headline_macro_recall")
+    print(wrap(f"{sv['model']} on {sv['sample']['size']:,} labelled reviews in this DB: "
+               f"3-class accuracy {(acc or 0) * 100:.1f}%"
+               + (f"; macro recall {(mrec or 0) * 100:.1f}%" if mrec is not None else "")
+               + f". {sv.get('ground_truth_note', '')}"))
 
     h("4. DATA HEALTH")
     dh = c.get("/data-health").json()
     print(wrap(f"input rows {dh['input_rows']:,} -> processed {dh['processed_reviews']:,}; rejected {dh['rejected']}; "
                f"duplicates removed {dh['ingestion_duplicates_removed']}; mojibake repaired {dh['mojibake_repaired']}."))
-    print(wrap(f"PII redactions by type: {dh['pii_redactions']}; synthetic PII recall {dh['pii_audit']['overall_recall']}."))
+    print(wrap(f"PII redactions by type: {dh['pii_redactions']}; this-batch PII recall {dh['pii_audit']['overall_recall']}."))
+    be = dh.get("batch_evaluation") or {}
+    if be.get("mean_available_recalls") is not None:
+        print(wrap(f"overall recall (this DB): mean {be['mean_available_recalls']:.3f} "
+                   f"(sentiment {be.get('sentiment_macro_recall')}, themes {be.get('theme_recall')}, "
+                   f"radar {be.get('radar_recall')}, PII {be.get('pii_recall')})."))
     if dh.get("traceability"):
         print(wrap(f"traceability audit: {dh['traceability']['status']} ({dh['traceability']['links_checked']} evidence links checked)."))
 

@@ -58,7 +58,7 @@ def load_source(source: str) -> tuple[list[dict], dict]:
         if not SYNTHETIC_CSV.exists():
             from ml.data import synthetic
 
-            synthetic.write_csv(synthetic.generate(seed=config.SEED), SYNTHETIC_CSV)
+            synthetic.write_csv(synthetic.generate(seed=config.SEED, scale=2.0), SYNTHETIC_CSV)
         with open(SYNTHETIC_CSV, encoding="utf-8") as fh:
             rows = list(csv.DictReader(fh))
         for r in rows:
@@ -68,19 +68,10 @@ def load_source(source: str) -> tuple[list[dict], dict]:
                 "seed": config.SEED, "note": "Deterministic synthetic data with planted patterns. Not real customer reviews."}
         return rows, info
     if source == "sentiment140":
-        from ml.data.sentiment140 import parse_s140_date
-
-        with open(S140_BATCH, encoding="utf-8") as fh:
-            raw = list(csv.DictReader(fh))
-        rows = []
-        for r in raw:
-            dt = parse_s140_date(r["date"])
-            rows.append({"review_id": f"S{r['id']}", "created_at": dt.isoformat() if dt else None, "text": r["text"],
-                         "rating": None, "platform": None, "app_version": None, "source": "sentiment140",
-                         "gt_sentiment": "negative" if r["target"] == "0" else "positive"})
-        info = {"name": "Sentiment140 10K balanced batch", "kind": "sentiment140", "path": "data/interim/s140_batch_10k.csv",
-                "seed": config.SEED + 1, "note": "Tweets from Apr-Jun 2009; binary labels; not product reviews."}
-        return rows, info
+        raise ValueError(
+            "Sentiment140 (tweets) was removed from the product path. This project is review-based. "
+            "Use --source synthetic or --source path\\to\\reviews.csv"
+        )
     if source.lower().endswith(".csv"):
         return load_csv(Path(source))
     raise ValueError(f"unknown source {source}")
@@ -93,6 +84,9 @@ CSV_ALIASES = {
     "platform": ("platform", "os", "device"),
     "app_version": ("app_version", "version", "review_created_version"),
     "review_id": ("review_id", "id", "reviewid"),
+    "gt_sentiment": ("gt_sentiment", "label", "sentiment_label", "sentiment_gt"),
+    "gt_theme": ("gt_theme", "theme_label", "topic_label"),
+    "gt_pii": ("gt_pii", "pii_types", "planted_pii"),
 }
 # ambiguous dates such as 06/07/2026 are read day-first
 DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y %H:%M", "%m/%d/%Y %H:%M")
@@ -150,14 +144,33 @@ def load_csv(path: Path) -> tuple[list[dict], dict]:
         except ValueError:
             rating_v = None
         text = r.get(cols["text"])
-        rows.append({"review_id": rid, "created_at": dt.isoformat() if dt else None, "text": text if text else None,
-                     "rating": rating_v, "platform": (r.get(cols["platform"]) or None) if cols["platform"] else None,
-                     "app_version": (r.get(cols["app_version"]) or None) if cols["app_version"] else None, "source": "csv"})
+        gt_sent = (r.get(cols["gt_sentiment"]) or "").strip().lower() if cols.get("gt_sentiment") else ""
+        # Accept common short aliases from future labelled CSVs
+        gt_sent = {"neg": "negative", "neu": "neutral", "pos": "positive",
+                   "0": "negative", "2": "neutral", "4": "positive",
+                   "1": "negative", "3": "neutral", "5": "positive"}.get(gt_sent, gt_sent)
+        if gt_sent not in ("negative", "neutral", "positive"):
+            gt_sent = None
+        gt_theme = (r.get(cols["gt_theme"]) or "").strip() if cols.get("gt_theme") else None
+        gt_pii = (r.get(cols["gt_pii"]) or "").strip() if cols.get("gt_pii") else None
+        row = {"review_id": rid, "created_at": dt.isoformat() if dt else None, "text": text if text else None,
+               "rating": rating_v, "platform": (r.get(cols["platform"]) or None) if cols["platform"] else None,
+               "app_version": (r.get(cols["app_version"]) or None) if cols["app_version"] else None, "source": "csv"}
+        if gt_sent:
+            row["gt_sentiment"] = gt_sent
+        if gt_theme:
+            row["gt_theme"] = gt_theme
+        if gt_pii:
+            row["gt_pii"] = gt_pii
+        rows.append(row)
     if not rows or bad_dates == len(rows):
         raise ValueError("no row has a parseable date")
+    has_labels = any(r.get("gt_sentiment") or r.get("rating") is not None for r in rows)
     info = {"name": f"Uploaded CSV ({path.name})", "kind": "csv", "path": path.name,
             "columns": {k: v for k, v in cols.items() if v}, "rows_without_date": bad_dates,
-            "note": "User-supplied reviews; results depend on the data and have no ground truth."}
+            "note": ("User-supplied reviews. Evaluation uses planted labels and/or star ratings from THIS file only."
+                     if has_labels else
+                     "User-supplied reviews; no sentiment labels/ratings — evaluation metrics for sentiment are unavailable.")}
     return rows, info
 
 
@@ -300,9 +313,10 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
     import torch
 
     from ml.embeddings.encoder import encode_cached
+    from ml.evaluation import batch_eval
     from ml.hardware import detect_hardware
     from ml.sentiment.model import SentimentModel
-    from ml.themes.discovery import ThemeParams, discover, embedding_texts
+    from ml.themes.discovery import ThemeParams, discover, embedding_texts, evaluate_against_truth
 
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     timer = StageTimer()
@@ -316,7 +330,7 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
     cleaned, clean_rep = timer.run("validate_redact_clean", clean_batch, rows)
     for r in cleaned:
         r["created_at"] = parse_dt(r.get("created_at"))
-        r.pop("gt_theme", None), r.pop("gt_pii", None)
+        # keep gt_* through modelling so this batch can be scored into THIS database only
     ts_missing = sum(1 for r in cleaned if r["created_at"] is None)
     texts = [r["text_redacted"] for r in cleaned]
 
@@ -337,6 +351,10 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
         r["theme_id"] = tres.themes[lab].theme_id if lab >= 0 else None
         r["theme_assignment"] = tres.assignment[idx]
         r["theme_similarity"] = round(float(tres.similarity[idx]), 4)
+    theme_truth = [r.get("gt_theme") or "unknown" for r in cleaned]
+    theme_eval = None
+    if any(r.get("gt_theme") and r["gt_theme"] != "invalid" for r in cleaned):
+        theme_eval = evaluate_against_truth(tres.labels, theme_truth, tres.themes)
 
     dated = [r for r in cleaned if r["created_at"]]
     end = max(r["created_at"] for r in dated)
@@ -363,9 +381,21 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
                                 "current_window": [cur_start.isoformat(), end.isoformat()]},
         "weekly_vs_baseline": weekly_drift(dated, end, n_weeks, theme_ids),
         "note": ("Drift is measured on the batch's own timestamps. " +
-                 {"synthetic": "Synthetic timestamps: drift reflects planted patterns, not production data.",
-                  "sentiment140": "Sentiment140 timestamps are 2009 tweet times."}.get(source, "Timestamps come from the uploaded CSV."))})
+                 {"synthetic": "Synthetic timestamps: drift reflects planted patterns, not production data."
+                  }.get(dataset_info["kind"], "Timestamps come from the uploaded CSV."))})
     trace = timer.run("traceability_audit", audit_traceability, cleaned, themes, radar)
+
+    batch_metrics = timer.run(
+        "batch_evaluation",
+        batch_eval.build,
+        cleaned,
+        model=config.SENTIMENT_MODEL,
+        revision=sent_rev,
+        device=device,
+        theme_eval=theme_eval,
+        themes=themes,
+        radar_items=radar["items"],
+    )
 
     sent_counts = Counter(r["sentiment"] for r in cleaned)
     n = len(cleaned)
@@ -381,6 +411,8 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
         "drift_status": drift["current_vs_previous"]["overall_status"],
         "date_range": [first.isoformat(), end.isoformat()],
         "avg_rating": round(float(np.mean([r["rating"] for r in cleaned if r.get("rating")])), 2) if any(r.get("rating") for r in cleaned) else None,
+        "evaluation_macro_recall": (batch_metrics.get("overall_recall") or {}).get("mean_available_recalls"),
+        "evaluation_sentiment_accuracy": ((batch_metrics.get("sentiment") or {}).get("metrics") or {}).get("headline_accuracy"),
     }
     overview["top_complaint"] = ({k: overview["top_complaint"][k] for k in ("theme_id", "name", "negative_count", "size", "negative_pct")}
                                  if overview["top_complaint"] else None)
@@ -407,18 +439,84 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
             "sentiment_reviews_per_sec": round(n / out.seconds, 1),
             "peak_gpu_mem_gb": round(torch.cuda.max_memory_allocated() / 1024**3, 3) if device == "cuda" else None,
             "embedding": emb_info}
+    # sentiment_validation is THIS batch only (served by GET /sentiment/validation)
+    sent_val = batch_metrics.get("sentiment")
+    if sent_val:
+        # shape compatible with the dashboard: expose three_class as the headline metrics block
+        sent_val = {
+            **sent_val,
+            "metrics": {
+                **sent_val["metrics"],
+                # aliases so older UI keys still resolve where possible
+                "three_class": sent_val["metrics"]["three_class"],
+                "binary_forced": sent_val["metrics"].get("binary_non_neutral_truth") or {
+                    "n": 0, "accuracy": None, "macro_f1": None,
+                    "negative": {"precision": 0, "recall": 0, "f1": 0, "support": 0},
+                    "positive": {"precision": 0, "recall": 0, "f1": 0, "support": 0},
+                },
+                "strict_3class": {
+                    "n": sent_val["metrics"]["three_class"]["n"],
+                    "accuracy": sent_val["metrics"]["three_class"]["accuracy"],
+                    "macro_f1": sent_val["metrics"]["three_class"]["macro_f1"],
+                    "negative": sent_val["metrics"]["three_class"]["per_class"]["negative"],
+                    "positive": sent_val["metrics"]["three_class"]["per_class"]["positive"],
+                },
+                "abstain": {
+                    **{k: sent_val["metrics"]["three_class"]["per_class"][k] for k in ()},
+                    "n": sent_val["metrics"]["three_class"]["n"],
+                    "accuracy": sent_val["metrics"]["three_class"]["accuracy"],
+                    "macro_f1": sent_val["metrics"]["three_class"]["macro_f1"],
+                    "negative": sent_val["metrics"]["three_class"]["per_class"]["negative"],
+                    "positive": sent_val["metrics"]["three_class"]["per_class"]["positive"],
+                    "coverage": 1.0,
+                },
+                "neutral_prediction_rate": round(
+                    float(sum(1 for r in cleaned if r["sentiment"] == "neutral") / max(1, len(cleaned))), 4),
+                "confusion_true2_pred3": {
+                    "negative": {
+                        "negative": sent_val["metrics"]["three_class"]["confusion"]["negative"]["negative"],
+                        "neutral": sent_val["metrics"]["three_class"]["confusion"]["negative"]["neutral"],
+                        "positive": sent_val["metrics"]["three_class"]["confusion"]["negative"]["positive"],
+                    },
+                    "positive": {
+                        "negative": sent_val["metrics"]["three_class"]["confusion"]["positive"]["negative"],
+                        "neutral": sent_val["metrics"]["three_class"]["confusion"]["positive"]["neutral"],
+                        "positive": sent_val["metrics"]["three_class"]["confusion"]["positive"]["positive"],
+                    },
+                },
+                "macro_recall": sent_val["metrics"]["headline_macro_recall"],
+                "per_class": sent_val["metrics"]["three_class"]["per_class"],
+                "confusion_3x3": sent_val["metrics"]["three_class"]["confusion"],
+            },
+            "batch_evaluation": {
+                "themes": batch_metrics.get("themes"),
+                "radar": batch_metrics.get("radar"),
+                "pii": batch_metrics.get("pii"),
+                "overall_recall": batch_metrics.get("overall_recall"),
+            },
+            "accuracy_study": None,
+            "synthetic_3class": sent_val["metrics"]["three_class"] if dataset_info["kind"] == "synthetic" else None,
+        }
     reports = {"overview": overview, "data_health": data_health, "drift": drift, "traceability": trace, "performance": perf,
-               "radar_meta": {k: v for k, v in radar.items() if k != "items"}, "hardware": hw}
-    for key, fname in (("sentiment_validation", "sentiment_validation.json"), ("pii_audit", "pii_audit.json"),
-                       ("model_verification", "model_verification.json"), ("dataset_validation", "dataset_validation.json")):
+               "radar_meta": {k: v for k, v in radar.items() if k != "items"}, "hardware": hw,
+               "batch_evaluation": batch_metrics}
+    if sent_val:
+        reports["sentiment_validation"] = sent_val
+    # optional offline verification summary (no tweet corpus)
+    for key, fname in (("pii_audit", "pii_audit.json"), ("model_verification", "model_verification.json")):
         f = config.ARTIFACTS_DIR / "reports" / fname
         if f.exists():
             reports[key] = json.loads(f.read_text(encoding="utf-8"))
-    if "pii_audit" in reports:  # the deployed DB must not carry Sentiment140 text, even redacted
-        reports["pii_audit"].get("sentiment140_batch", {}).pop("redacted_examples_for_manual_review", None)
-    if "model_verification" in reports:  # keep the report small and free of tracebacks
+    if "pii_audit" in reports:
+        reports["pii_audit"].pop("sentiment140_batch", None)
+    if "model_verification" in reports:
         for m in reports["model_verification"].get("models", {}).values():
             m.pop("traceback", None)
+    # strip ground-truth columns before DB write (labels were for scoring only; not served)
+    for r in cleaned:
+        r.pop("gt_theme", None)
+        r.pop("gt_pii", None)
+        r.pop("gt_sentiment", None)  # labels used for this-DB scoring only; never served
     models = {
         config.SENTIMENT_MODEL: {"revision": sent_rev, "device": device, "purpose": "sentiment", "batch_size": 64,
                                  "dtype": "float16" if device == "cuda" else "float32"},
@@ -435,7 +533,7 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", default="synthetic", help="synthetic | sentiment140 | path to a review CSV")
+    ap.add_argument("--source", default="synthetic", help="synthetic | path to a review CSV")
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--db", type=Path, default=None)
     ap.add_argument("--device", default=None, choices=[None, "cuda", "cpu"])

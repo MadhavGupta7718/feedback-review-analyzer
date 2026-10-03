@@ -89,7 +89,16 @@ def build_facts(db_path: Path) -> dict:
             "declining": declining,
             "drift": {k: {"value": v["value"], "status": v["status"]} for k, v in dm.items()},
             "drift_overall": drift["current_vs_previous"]["overall_status"] if drift else None,
-            "sentiment_accuracy": (sv or {}).get("metrics", {}).get("binary_forced", {}).get("accuracy"),
+            "sentiment_accuracy": (
+                (sv or {}).get("metrics", {}).get("headline_accuracy")
+                or (sv or {}).get("metrics", {}).get("three_class", {}).get("accuracy")
+                or (sv or {}).get("metrics", {}).get("binary_forced", {}).get("accuracy")
+            ),
+            "sentiment_macro_recall": (
+                (sv or {}).get("metrics", {}).get("macro_recall")
+                or (sv or {}).get("metrics", {}).get("headline_macro_recall")
+                or ((sv or {}).get("batch_evaluation") or {}).get("overall_recall", {}).get("sentiment_macro_recall")
+            ),
             "allowed_review_ids": sorted({r for e in emerging for r in e["evidence_review_ids"]} |
                                          {r for c in top for r in c["representative_ids"]}),
             "allowed_theme_names": sorted({t["name"] for t in themes.values()}),

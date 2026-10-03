@@ -27,7 +27,7 @@ unless a validator accepts it.
 
 | Path | Responsibility |
 |---|---|
-| `ml/data/sentiment140.py` | Streaming validation of the 1.6M-row CSV (one pass, never fully in memory); deterministic samples |
+| `ml/evaluation/batch_eval.py` | Per-DB accuracy/recall (sentiment, themes, radar, PII) stored only in that batch's analytics DB |
 | `ml/data/synthetic.py` | Deterministic synthetic review generator (seed 42) with planted themes, trends, PII and dirty rows |
 | `ml/preprocessing/clean.py` | Mojibake repair, HTML entities, null/empty rejection, ingestion-duplicate removal, then redaction |
 | `ml/pii/redactor.py` | Ordered regex rules → typed placeholders (`[EMAIL]`, `[PHONE]` …); returns counts only, never the matched values |

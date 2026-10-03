@@ -37,9 +37,9 @@ pip install -r requirements-api.txt; uvicorn backend.app.main:app --port 8000
 | GET | `/issues/{theme_id}/evidence` | The evidence reviews (radar evidence and theme representatives) as full redacted review records |
 | GET | `/reviews` | Paginated redacted reviews: `total`, `limit`, `offset`, `reviews` |
 | GET | `/reviews/{review_id}` | One review with class probabilities, theme similarity and where it is used as evidence |
-| GET | `/sentiment/validation` | Sentiment140 evaluation: three scorings, confusion matrix, benchmark, synthetic 3-class check |
+| GET | `/sentiment/validation` | This-DB sentiment eval: 3-class accuracy/macro recall, confusion, optional binary on non-neutral truth |
 | GET | `/drift` | Current-vs-previous drift (sentiment PSI, theme PSI, volume, length KS) and weekly drift vs baseline |
-| GET | `/data-health` | Ingestion counts, rejects, duplicates, PII redactions by type, PII recall, traceability audit, Sentiment140 validation summary |
+| GET | `/data-health` | Ingestion counts, rejects, duplicates, PII redactions by type, this-batch recall summary, traceability audit |
 | GET | `/model-info` | Model revisions, offline verification, hardware of the pipeline run, performance, brief engine status |
 | POST | `/product-brief` | Product brief (see below) |
 

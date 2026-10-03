@@ -124,15 +124,14 @@ describe("Evidence", () => {
 });
 
 describe("Sentiment Validation", () => {
-  it("shows the three scorings and states the binary ground truth", async () => {
+  it("shows this-DB accuracy and macro recall", async () => {
     mockFetch();
     renderAt("/sentiment");
-    const acc = `${(fixtures.sentiment.metrics.binary_forced.accuracy * 100).toFixed(1)}%`;
+    const acc = `${((fixtures.sentiment.metrics.headline_accuracy ?? 0) * 100).toFixed(1)}%`;
     expect((await screen.findAllByText(acc)).length).toBeGreaterThan(0);
-    expect(screen.getByText("Binary forced")).toBeInTheDocument();
-    expect(screen.getByText("Abstain on neutral")).toBeInTheDocument();
-    expect(screen.getAllByText("Strict 3-class").length).toBeGreaterThan(0);
-    expect(screen.getByText(/NO neutral ground truth/)).toBeInTheDocument();
+    expect(screen.getByText(/this database only/i)).toBeInTheDocument();
+    expect(screen.getByText(/planted synthetic ground truth/i)).toBeInTheDocument();
+    expect(screen.getByText("Overall recall (this batch)")).toBeInTheDocument();
   });
 });
 

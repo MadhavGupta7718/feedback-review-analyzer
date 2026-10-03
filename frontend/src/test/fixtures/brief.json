@@ -47,6 +47,6 @@
   "Statistics describe feedback volume and sentiment; they do not establish causes.",
   "All quotes are redacted verbatims from the analysed batch.",
   "This batch is synthetic demonstration data, not real customer feedback.",
-  "Sentiment model accuracy on the held-out labelled Sentiment140 test split: 77.7% (binary evaluation)."
+  "Sentiment model on this batch's labelled reviews: accuracy 88.6%, macro recall 79.7%."
  ]
 }

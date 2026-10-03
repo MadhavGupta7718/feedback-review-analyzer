@@ -14,7 +14,12 @@ Status rules, evaluated in this order
   NEW                    previous == 0 and current >= min_current_mentions
   EMERGING               growth_pct >= min_growth_pct
   DECLINING              growth_pct <= -decline_pct
+                         OR (growth_pct <= -soft_decline_pct AND weekly trend is falling
+                             AND previous >= min_current_mentions)
   STABLE                 otherwise
+
+  Mentions thresholds scale gently with batch size so small uploads still get radar statuses
+  (see RadarParams.effective_min_current_mentions).
 
 Priority (only a sort key; it never decides the status)
   priority = negative mentions in current window x growth_factor
@@ -37,11 +42,27 @@ class RadarParams:
     min_growth_pct: float = 50.0
     min_negative_ratio: float = 0.50
     decline_pct: float = 25.0
+    # Gradual declines: milder drop is DECLINING only when the multi-week trend also falls.
+    soft_decline_pct: float = 15.0
     max_growth_bonus: float = 3.0
     n_evidence: int = 5
     trend_bucket_days: int = 7
     min_segment_support: int = 20
     min_segment_lift: float = 1.3
+    # Floor/ceiling for mention threshold when scaling with batch size
+    min_current_mentions_floor: int = 8
+    min_current_mentions_ceil: int = 30
+
+    def effective_min_current_mentions(self, n_reviews: int) -> int:
+        """Lower the volume gate for small CSVs; keep the default (30) on large batches."""
+        target = min(self.min_current_mentions, self.min_current_mentions_ceil)
+        if n_reviews <= 0:
+            return self.min_current_mentions_floor
+        if n_reviews >= 5000:
+            return target
+        # ~1.5% of batch size, clamped to [floor, target]
+        scaled = int(round(n_reviews * 0.015))
+        return max(self.min_current_mentions_floor, min(target, scaled or self.min_current_mentions_floor))
 
 
 PRIORITY_FORMULA = "priority = current_negative_mentions x (1 + clip(growth_pct / 100, 0, {cap}))  [NEW: x (1 + {cap})]"
@@ -139,6 +160,9 @@ def compute_radar(reviews: list[dict], themes: list[dict], params: RadarParams |
     prev_start = cur_start - timedelta(days=p.window_days)
     first = min(r["created_at"] for r in valid)
     n_buckets = max(1, math.ceil((end - first).total_seconds() / (p.trend_bucket_days * 86400)))
+    min_mentions = p.effective_min_current_mentions(len(valid))
+    # Keep a hard evidence floor of 3 on large batches; allow 2 only on very small CSVs.
+    min_evidence = 2 if len(valid) < 200 else p.min_evidence_reviews
 
     in_cur = [r for r in valid if cur_start < r["created_at"] <= end]
     in_prev = [r for r in valid if prev_start < r["created_at"] <= cur_start]
@@ -161,6 +185,7 @@ def compute_radar(reviews: list[dict], themes: list[dict], params: RadarParams |
         neg_all = sum(1 for r in mem if r.get("sentiment") == "negative") / len(mem) if mem else 0.0
         g = growth_pct(c, pv)
         weekly = weekly_buckets([r["created_at"] for r in mem], end, n_buckets, p.trend_bucket_days)
+        trend = _trend(weekly)
         evidence = sorted(neg_cur, key=lambda r: (-(r.get("similarity") or 0), -(r.get("confidence") or 0), r["review_id"]))
         ev_ids = [r["review_id"] for r in evidence[: p.n_evidence]]
 
@@ -170,25 +195,33 @@ def compute_radar(reviews: list[dict], themes: list[dict], params: RadarParams |
         elif (neg_ratio if c else neg_all) < p.min_negative_ratio:
             status = "NOT_A_COMPLAINT"
             reasons.append(f"negative ratio {round((neg_ratio if c else neg_all) * 100, 1)}% < {p.min_negative_ratio * 100:.0f}%")
-        elif c < p.min_current_mentions or len(neg_cur) < p.min_evidence_reviews:
+        elif c < min_mentions or len(neg_cur) < min_evidence:
             status = "INSUFFICIENT_EVIDENCE"
-            reasons.append(f"current mentions {c} < {p.min_current_mentions}" if c < p.min_current_mentions
-                           else f"negative evidence reviews {len(neg_cur)} < {p.min_evidence_reviews}")
+            reasons.append(f"current mentions {c} < {min_mentions}" if c < min_mentions
+                           else f"negative evidence reviews {len(neg_cur)} < {min_evidence}")
         elif not has_previous_window:
             status = "INSUFFICIENT_EVIDENCE"
             reasons.append("batch does not cover a full previous window")
         elif pv == 0:
             status = "NEW"
-            reasons.append(f"0 mentions in previous window, {c} in current window (>= {p.min_current_mentions})")
+            reasons.append(f"0 mentions in previous window, {c} in current window (>= {min_mentions})")
         elif g is not None and g >= p.min_growth_pct:
             status = "EMERGING"
             reasons.append(f"growth {g}% >= {p.min_growth_pct}% with {round(neg_ratio * 100, 1)}% negative and {c} mentions")
         elif g is not None and g <= -p.decline_pct:
             status = "DECLINING"
             reasons.append(f"growth {g}% <= -{p.decline_pct}%")
+        elif (g is not None and g <= -p.soft_decline_pct and trend == "falling"
+              and pv >= min_mentions):
+            status = "DECLINING"
+            reasons.append(
+                f"growth {g}% <= -{p.soft_decline_pct}% with falling multi-week trend "
+                f"(soft decline; hard threshold is -{p.decline_pct}%)"
+            )
         else:
             status = "STABLE"
-            reasons.append(f"growth {g}% within (-{p.decline_pct}%, {p.min_growth_pct}%)")
+            reasons.append(f"growth {g}% within (-{p.soft_decline_pct}%, {p.min_growth_pct}%) "
+                           f"or decline lacks a falling weekly trend")
 
         gf = growth_factor(g, pv, c, p.max_growth_bonus)
         priority = round(len(neg_cur) * gf, 2)
@@ -220,21 +253,30 @@ def compute_radar(reviews: list[dict], themes: list[dict], params: RadarParams |
                        ("previous = 0 -> growth undefined, classified NEW" if c > 0 else "no mentions in either window")),
             "negative_ratio": f"{len(neg_cur)} / {c} = {round(neg_ratio * 100, 1)}%" if c else "no current mentions",
             "priority": f"{len(neg_cur)} x {gf:.2f} = {priority}",
-            "thresholds": {"min_current_mentions": p.min_current_mentions, "min_growth_pct": p.min_growth_pct,
-                           "min_negative_ratio": p.min_negative_ratio, "min_evidence_reviews": p.min_evidence_reviews},
+            "thresholds": {
+                "min_current_mentions": min_mentions,
+                "min_growth_pct": p.min_growth_pct,
+                "min_negative_ratio": p.min_negative_ratio,
+                "min_evidence_reviews": min_evidence,
+                "decline_pct": p.decline_pct,
+                "soft_decline_pct": p.soft_decline_pct,
+            },
         }
         items.append(RadarItem(
             theme_id=tid, name=t["name"], status=status, current_mentions=c, previous_mentions=pv, growth_pct=g,
             growth_label=glabel, negative_mentions_current=len(neg_cur), negative_ratio=round(neg_ratio, 4),
             negative_ratio_all=round(neg_all, 4), total_mentions=len(mem), acceleration_pp=_acceleration(weekly),
-            trend=_trend(weekly), weekly_counts=weekly, evidence_review_ids=ev_ids, priority=priority,
+            trend=trend, weekly_counts=weekly, evidence_review_ids=ev_ids, priority=priority,
             calculation=calc, associations=sorted(associations, key=lambda a: -a["lift"])[:3], reasons=reasons,
         ))
 
     order = {"NEW": 0, "EMERGING": 1, "STABLE": 2, "DECLINING": 3, "INSUFFICIENT_EVIDENCE": 4, "NOT_A_COMPLAINT": 5, "NO_DATA": 6}
     items.sort(key=lambda i: (order[i.status], -i.priority, i.theme_id))
+    params_out = asdict(p)
+    params_out["effective_min_current_mentions"] = min_mentions
+    params_out["effective_min_evidence_reviews"] = min_evidence
     return {
-        "params": asdict(p),
+        "params": params_out,
         "formula": PRIORITY_FORMULA.format(cap=p.max_growth_bonus),
         "rules": __doc__.split("Status rules")[1].split("Priority")[0].strip(),
         "window": {"current_start": cur_start.isoformat(), "end": end.isoformat(), "previous_start": prev_start.isoformat(),
