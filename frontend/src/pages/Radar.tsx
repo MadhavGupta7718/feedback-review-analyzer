@@ -24,6 +24,17 @@ export function Radar() {
   if (loading) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "No data"} onRetry={reload} />;
 
+  if (data.dates_available === false || data.status === "unavailable") {
+    return (
+      <div className="page">
+        <PageHeader title="Complaint Radar" description="Growing complaints need review timestamps." />
+        <div className="banner" role="note">
+          {data.message || "This view needs review dates; none were found in this dataset."}
+        </div>
+      </div>
+    );
+  }
+
   const wanted = FILTERS[filter].statuses;
   const issues = data.issues.filter((i) => !wanted || wanted.includes(i.status));
   const w = data.window;

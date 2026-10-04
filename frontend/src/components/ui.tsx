@@ -53,6 +53,7 @@ export function SentimentBadge({ sentiment }: { sentiment: Sentiment }) {
 }
 
 export function DriftBadge({ status }: { status: DriftStatus }) {
+  if (status === "unavailable") return <span className="badge badge-drift-unavailable">dates required</span>;
   return <span className={`badge badge-drift-${status}`}>{status === "none" ? "no drift" : `${status} drift`}</span>;
 }
 

@@ -85,31 +85,33 @@ export function DataHealth() {
             {fmtInt(h.theme_stats.reassigned_by_nearest_centroid)} reassigned to the nearest theme, {fmtInt(h.theme_stats.unassigned)} ({fmtRatio(h.theme_stats.unassigned_fraction)}) left
             unassigned.
           </p>
-          <h3 className="section-title">This-batch evaluation</h3>
+          <h3 className="section-title">Model accuracy</h3>
           <p className="small">
-            {h.dataset_validation?.note ?? "Metrics are computed for this analytics database only."}
-            {h.batch_evaluation?.mean_available_recalls != null && (
-              <>
-                {" "}
-                Mean available recall <strong>{fmtRatio(h.batch_evaluation.mean_available_recalls)}</strong>
-                {h.batch_evaluation.sentiment_macro_recall != null && <> · sentiment {fmtRatio(h.batch_evaluation.sentiment_macro_recall)}</>}
-                {h.batch_evaluation.theme_recall != null && <> · themes {fmtRatio(h.batch_evaluation.theme_recall)}</>}
-                {h.batch_evaluation.radar_recall != null && <> · radar {fmtRatio(h.batch_evaluation.radar_recall)}</>}
-                {h.batch_evaluation.pii_recall != null && <> · PII {fmtRatio(h.batch_evaluation.pii_recall)}</>}
-              </>
-            )}
+            {h.dataset_validation?.note ?? "Upload analytics only. See Model Validation for Amazon holdout accuracy."}
           </p>
+          {h.dates_available === false && (
+            <p className="banner top-gap">{h.dates_message || "Drift needs review dates; none were found in this dataset."}</p>
+          )}
         </Card>
       </div>
 
       <Card
         title="Drift: current vs previous window"
-        subtitle={drift.data ? `${fmtDate(drift.data.current_vs_previous.reference_window[0])} → ${fmtDate(drift.data.current_vs_previous.current_window[1])}` : undefined}
-        actions={drift.data && <DriftBadge status={drift.data.current_vs_previous.overall_status} />}
+        subtitle={
+          drift.data?.current_vs_previous?.reference_window
+            ? `${fmtDate(drift.data.current_vs_previous.reference_window[0])} → ${fmtDate(drift.data.current_vs_previous.current_window[1])}`
+            : undefined
+        }
+        actions={drift.data?.current_vs_previous?.overall_status && drift.data.current_vs_previous.overall_status !== "unavailable" ? (
+          <DriftBadge status={drift.data.current_vs_previous.overall_status} />
+        ) : undefined}
       >
         {drift.loading && <Loading />}
         {drift.error && <ErrorState message={drift.error} onRetry={drift.reload} />}
-        {drift.data && (
+        {drift.data?.status === "unavailable" || h.dates_available === false ? (
+          <p className="muted">{drift.data?.message || h.dates_message || "This view needs review dates; none were found in this dataset."}</p>
+        ) : null}
+        {drift.data && drift.data.status !== "unavailable" && h.dates_available !== false && (
           <>
             <table className="table">
               <thead>

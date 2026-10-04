@@ -1,4 +1,4 @@
-"""Read-only access to the precomputed analytics database. The raw dataset is never opened by the API."""
+"""Read-only access to the active analytics database. The raw dataset is never opened by the API."""
 from __future__ import annotations
 
 import json
@@ -16,6 +16,15 @@ class DatabaseUnavailable(RuntimeError):
 
 
 def db_path() -> Path:
+    # Prefer explicitly activated upload batch, then ANALYTICS_DB env, then default.
+    try:
+        from backend.app import batches as batch_reg
+
+        active = batch_reg.get_active_db_path()
+        if active and active.exists():
+            return active
+    except Exception:
+        pass
     p = Path(os.environ.get("ANALYTICS_DB", str(config.ANALYTICS_DB)))
     return p if p.is_absolute() else config.REPO_ROOT / p
 

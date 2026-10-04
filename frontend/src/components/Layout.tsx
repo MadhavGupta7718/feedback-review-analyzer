@@ -5,13 +5,13 @@ import { useApi } from "../api/useApi";
 import { Loading } from "./ui";
 
 const NAV = [
+  { to: "/batches", label: "Upload & batches" },
+  { to: "/sentiment", label: "Model Validation" },
   { to: "/", label: "Executive Overview", end: true },
   { to: "/themes", label: "Themes" },
   { to: "/radar", label: "Complaint Radar" },
   { to: "/evidence", label: "Evidence" },
-  { to: "/sentiment", label: "Sentiment Validation" },
   { to: "/health", label: "Data Health" },
-  { to: "/brief", label: "Product Brief" },
 ];
 
 export function Layout() {
@@ -25,7 +25,7 @@ export function Layout() {
           </span>
           <div>
             <div className="brand-name">Review Analyzer</div>
-            <div className="brand-sub">10,000 reviews, no time to read them</div>
+            <div className="brand-sub">Upload batches · Amazon-trained sentiment</div>
           </div>
         </div>
         <nav>
@@ -38,13 +38,15 @@ export function Layout() {
         <div className="sidebar-foot" aria-live="polite">
           {health.loading ? (
             <span className="dot dot-grey" />
-          ) : health.error ? (
+          ) : health.error || health.data?.status !== "ok" ? (
             <>
-              <span className="dot dot-red" /> API offline
+              <span className="dot dot-red" /> No active batch — upload a CSV
             </>
           ) : (
             <>
-              <span className="dot dot-green" /> API ok · {health.data?.reviews.toLocaleString("en-US")} reviews
+              <span className="dot dot-green" />
+              {` API ok · ${(health.data.reviews ?? 0).toLocaleString("en-US")} reviews`}
+              {health.data.dataset ? ` · ${health.data.dataset}` : ""}
             </>
           )}
         </div>

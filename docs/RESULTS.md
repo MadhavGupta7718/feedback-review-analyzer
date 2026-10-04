@@ -9,15 +9,21 @@ recorded in `docs/DEVELOPMENT_LOG.md`.
 
 | What | Result |
 |---|---|
-| Sentiment accuracy on the held-out Sentiment140 test split, 156,705 tweets (product model, binary, every example scored) | **0.7766** (macro F1 0.7757); **0.7806** with the validation-tuned binary threshold |
-| Separate fine-tuned binary RoBERTa (experiment, not in the pipeline), same test split | **0.8730** (macro F1 0.8730) |
-| Product model on labelled product reviews (Amazon polarity test, 20,000 reviews; no tuning on this data) | **0.9156** (macro F1 0.9156) |
-| Product model on labelled business reviews (Yelp polarity test, 20,000 reviews; no tuning on this data) | **0.8719** (macro F1 0.8711) |
-| PII recall on the synthetic batch (628 planted PII rows, 9 types) | **100%** (628/628), 0 false-positive rows out of 9,476 |
-| Evidence traceability audit (theme/complaint → review IDs) | PASS: 213 links checked, 0 problems |
-| Planted synthetic themes recovered | 12 of 13 (the missing one, 24 reviews, is below the minimum theme size) |
-| Complaint Radar on the synthetic batch | NEW, EMERGING, STABLE and DECLINING planted patterns all detected |
-| End-to-end pipeline, 10,104 reviews | **46.7 s on the GPU vs 455.4 s on the CPU (9.8× faster)** |
+| **Product model (Amazon clothing fine-tune)** TEST accuracy / macro recall (`amazon_sentiment_eval.json`, 4,812 holdout reviews) | **0.8315** / **0.7363** |
+| Per-class TEST recall | neg **0.7225** · neu **0.6000** · pos **0.8865** |
+| Split | 38,661 train / 4,830 val / 4,812 test (`sha256(text)%100` → 80/10/10) |
+| Labels | Cons_rating → 1–2 neg, 3 neu, 4–5 pos (weak labels) |
+| Training | 3 epochs, bs=16, lr=2e-5; best val macro recall **0.7470** (epoch 2) |
+| Upload path | Per-batch analytics DB; **no** per-upload accuracy page |
+| Sample upload pipeline (407 reviews, Amazon fine-tune loaded) | **23.6 s** GPU; traceability PASS |
+
+### Historical offline studies (not the product accuracy page)
+
+| What | Result |
+|---|---|
+| Sentiment140 holdout binary (pretrained cardiffnlp) | 0.7766 accuracy |
+| Amazon / Yelp polarity offline | ~0.92 / ~0.87 |
+| Synthetic Nimbus planted PII / themes / radar | See archive sections below |
 
 ## Sentiment validation (`sentiment_validation.json`)
 

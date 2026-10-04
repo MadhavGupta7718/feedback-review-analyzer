@@ -32,6 +32,16 @@ PLANTED_RADAR = {
     "price_value": {"DECLINING"},
     "scalp_irritation": {"STABLE", "INSUFFICIENT_EVIDENCE"},
     "travel_size_request": {"INSUFFICIENT_EVIDENCE", "NOT_A_COMPLAINT", "NO_DATA"},
+    # Adidas shoes mock
+    "sizing_wrong": {"NEW", "EMERGING"},
+    "sole_wear": {"EMERGING", "STABLE"},
+    "comfort_pain": {"STABLE", "INSUFFICIENT_EVIDENCE"},
+    "wide_fit_request": {"INSUFFICIENT_EVIDENCE", "NOT_A_COMPLAINT", "NO_DATA"},
+    # Realme earbuds mock
+    "pairing_failure": {"NEW", "EMERGING"},
+    "earbud_battery": {"EMERGING", "STABLE"},
+    "sound_quality": {"STABLE", "INSUFFICIENT_EVIDENCE"},
+    "anc_request": {"INSUFFICIENT_EVIDENCE", "NOT_A_COMPLAINT", "NO_DATA"},
 }
 
 
@@ -167,6 +177,9 @@ def radar_report(radar_items: list[dict], themes: list[dict], rows: list[dict] |
         "login": "login_problems", "crash": "app_crashes", "dark": "dark_mode_request",
         "pump": "bottle_pump", "dry": "dry_hair", "price": "price_value",
         "scalp": "scalp_irritation", "itch": "scalp_irritation", "travel": "travel_size_request",
+        "sole": "sole_wear", "sizing": "sizing_wrong", "wide fit": "wide_fit_request",
+        "pairing": "pairing_failure", "earbud": "earbud_battery", "buds battery": "earbud_battery",
+        "sound quality": "sound_quality", "anc": "anc_request",
     }
     found: dict[str, str] = {}
     for it in radar_items:

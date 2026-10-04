@@ -34,8 +34,14 @@ class SentimentModel:
         self.max_length = max_length
         self.tok, self.model, local = registry.load_sentiment(device)
         self.revision = local.revision
-        id2label = {i: self.model.config.id2label[i].lower() for i in range(self.model.config.num_labels)}
-        self.order = [next(i for i, l in id2label.items() if l == lab) for lab in LABELS]
+        self.model_id = local.repo_id
+        id2label = {i: str(self.model.config.id2label[i]).lower() for i in range(self.model.config.num_labels)}
+        self.order = []
+        for lab in LABELS:
+            try:
+                self.order.append(next(i for i, l in id2label.items() if l == lab or l.startswith(lab[:3])))
+            except StopIteration:
+                self.order.append(LABELS.index(lab) if LABELS.index(lab) < self.model.config.num_labels else 0)
 
     def predict(self, texts: list[str], batch_size: int = 64) -> SentimentOutput:
         torch = self.torch
@@ -63,6 +69,6 @@ class SentimentModel:
             seconds=secs,
             device=self.device,
             batch_size=batch_size,
-            model=config.SENTIMENT_MODEL,
+            model=getattr(self, "model_id", None) or config.SENTIMENT_MODEL,
             revision=self.revision,
         )

@@ -30,13 +30,19 @@ export function Overview() {
         title="Executive Overview"
         description={
           <>
-            {fmtInt(ov.total_reviews)} reviews from {fmtDate(ov.date_range?.[0])} to {fmtDate(ov.date_range?.[1])} · {dataset?.name}
+            {fmtInt(ov.total_reviews)} reviews
+            {ov.date_range ? (
+              <> from {fmtDate(ov.date_range[0])} to {fmtDate(ov.date_range[1])}</>
+            ) : (
+              <> · no dates in this batch</>
+            )}
+            {dataset?.name ? <> · {dataset.name}</> : null}
           </>
         }
       />
-      {dataset?.kind === "synthetic" && (
+      {ov.dates_available === false && (
         <div className="banner" role="note">
-          <strong>Demonstration data.</strong> {dataset.note}
+          {ov.dates_message || "This view needs review dates; none were found in this dataset. Complaint Radar and drift are unavailable."}
         </div>
       )}
 
@@ -45,13 +51,20 @@ export function Overview() {
         <Kpi label="Negative" value={fmtPct(ov.sentiment_pct.negative)} tone="bad" hint={`${fmtInt(ov.sentiment_counts.negative)} reviews`} />
         <Kpi label="Positive" value={fmtPct(ov.sentiment_pct.positive)} tone="good" hint={`${fmtInt(ov.sentiment_counts.positive)} reviews`} />
         <Kpi label="Themes" value={ov.n_themes} hint={`${ov.n_complaint_themes} complaint themes`} />
-        <Kpi label="Emerging issues" value={ov.emerging.length} tone={ov.emerging.length ? "warn" : undefined} hint="NEW or EMERGING, last 14 days" />
+        <Kpi
+          label="Emerging issues"
+          value={ov.dates_available === false ? "–" : ov.emerging.length}
+          tone={ov.emerging.length ? "warn" : undefined}
+          hint={ov.dates_available === false ? "needs dates" : "NEW or EMERGING, last 14 days"}
+        />
         <Kpi label="PII redacted" value={fmtInt(ov.pii_redactions_total)} hint="before storage" />
       </div>
 
       <div className="grid-2">
         <Card title="Emerging complaints" subtitle="Current 14-day window vs the previous 14 days" actions={<Link to="/radar" className="btn btn-small">Open radar</Link>}>
-          {ov.emerging.length === 0 ? (
+          {ov.dates_available === false ? (
+            <p className="muted">{ov.dates_message || "Complaint Radar requires review dates; none were found in this dataset."}</p>
+          ) : ov.emerging.length === 0 ? (
             <p className="muted">No complaint theme meets the emerging thresholds.</p>
           ) : (
             <ul className="issue-list">

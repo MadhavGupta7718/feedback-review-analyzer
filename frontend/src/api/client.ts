@@ -6,13 +6,35 @@ import type {
   IssuesResponse,
   MetricsResponse,
   ModelInfo,
-  ProductBrief,
   Review,
   ReviewDetail,
   SentimentValidation,
   Theme,
   ThemeDetail,
 } from "./types";
+
+export interface BatchInfo {
+  batch_id: string;
+  name?: string;
+  filename?: string;
+  db_path?: string;
+  created_at_utc?: string;
+  reviews?: number | null;
+  dates_available?: boolean | null;
+  n_themes?: number | null;
+  active?: boolean;
+}
+
+export interface BatchJob {
+  job_id: string;
+  batch_id: string;
+  status: string;
+  filename?: string;
+  error?: string | null;
+  started_at_utc?: string;
+  finished_at_utc?: string;
+  batch?: BatchInfo;
+}
 
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
 
@@ -27,11 +49,12 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
+  const headers = new Headers(init?.headers);
+  if (init?.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
   try {
-    res = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    });
+    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
   } catch {
     throw new ApiError("Cannot reach the analytics API. Is the backend running?", 0);
   }
@@ -74,10 +97,16 @@ export const api = {
     return request<{ total: number; limit: number; offset: number; reviews: Review[] }>(`/reviews?${params}`);
   },
   review: (id: string) => request<ReviewDetail>(`/reviews/${enc(id)}`),
-  sentimentValidation: () => request<SentimentValidation>("/sentiment/validation"),
+  sentimentValidation: () => request<SentimentValidation>("/model/evaluation"),
   drift: () => request<DriftResponse>("/drift"),
   dataHealth: () => request<DataHealth>("/data-health"),
   modelInfo: () => request<ModelInfo>("/model-info"),
-  productBrief: (engine: "auto" | "qwen" | "template") =>
-    request<ProductBrief>("/product-brief", { method: "POST", body: JSON.stringify({ engine }) }),
+  batches: () => request<{ batches: BatchInfo[]; active_db: string | null }>("/batches"),
+  uploadBatch: async (file: File) => {
+    const body = new FormData();
+    body.append("file", file);
+    return request<BatchJob>("/batches/upload", { method: "POST", body });
+  },
+  batchJob: (jobId: string) => request<BatchJob>(`/batches/jobs/${enc(jobId)}`),
+  activateBatch: (batchId: string) => request<BatchInfo>(`/batches/${enc(batchId)}/activate`, { method: "POST" }),
 };

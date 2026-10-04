@@ -7,7 +7,7 @@ export type RadarStatus =
   | "INSUFFICIENT_EVIDENCE"
   | "NOT_A_COMPLAINT"
   | "NO_DATA";
-export type DriftStatus = "none" | "moderate" | "significant";
+export type DriftStatus = "none" | "moderate" | "significant" | "unavailable";
 
 export interface DatasetInfo {
   name: string;
@@ -37,8 +37,10 @@ export interface Overview {
   top_complaint: { theme_id: string; name: string; negative_count: number; size: number; negative_pct: number } | null;
   emerging: EmergingSummary[];
   pii_redactions_total: number;
-  drift_status: DriftStatus;
-  date_range: [string, string];
+  drift_status: DriftStatus | "unavailable";
+  date_range: [string, string] | null;
+  dates_available?: boolean;
+  dates_message?: string | null;
   avg_rating: number | null;
 }
 
@@ -149,6 +151,9 @@ export interface IssuesResponse {
   params: Record<string, number> | null;
   rules: string | null;
   issues: Issue[];
+  dates_available?: boolean;
+  message?: string | null;
+  status?: string;
 }
 
 export interface IssueDetail extends Issue {
@@ -304,9 +309,12 @@ export interface WeeklyDrift {
 }
 
 export interface DriftResponse {
-  current_vs_previous: DriftBlock;
-  weekly_vs_baseline: WeeklyDrift[];
-  note: string;
+  current_vs_previous?: DriftBlock;
+  weekly_vs_baseline?: WeeklyDrift[];
+  note?: string;
+  status?: string;
+  message?: string | null;
+  dates_available?: boolean;
 }
 
 export interface DataHealth {
@@ -321,6 +329,8 @@ export interface DataHealth {
   html_entities_decoded: number;
   pii_redactions: Record<string, number>;
   rows_with_pii: number;
+  dates_available?: boolean;
+  dates_message?: string | null;
   theme_stats: {
     n_clusters: number;
     n_micro_clusters: number;

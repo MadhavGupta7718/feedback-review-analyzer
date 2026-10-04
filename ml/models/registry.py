@@ -71,8 +71,19 @@ def dir_size_bytes(path: Path) -> int:
 
 
 def load_sentiment(device: str = "cpu"):
+    """Load Amazon fine-tuned 3-class model when present; else pretrained cardiffnlp."""
     import torch
     from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+    amazon = config.AMAZON_SENTIMENT_DIR
+    if (amazon / "config.json").exists():
+        tok = AutoTokenizer.from_pretrained(str(amazon), local_files_only=True)
+        model = AutoModelForSequenceClassification.from_pretrained(str(amazon), local_files_only=True)
+        model.eval().to(device)
+        if device == "cuda":
+            model = model.to(torch.float16)
+        local = LocalModel(repo_id=f"local:{amazon.name}", path=amazon, revision="amazon-finetune")
+        return tok, model, local
 
     m = require(config.SENTIMENT_MODEL)
     tok = AutoTokenizer.from_pretrained(m.path, local_files_only=True)

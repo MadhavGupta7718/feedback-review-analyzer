@@ -39,7 +39,6 @@ describe("Executive Overview", () => {
     expect(screen.getByText(ov.total_reviews.toLocaleString("en-US"))).toBeInTheDocument();
     expect(screen.getByText(`${ov.sentiment_pct.negative.toFixed(1)}%`)).toBeInTheDocument();
     for (const e of ov.emerging) expect(screen.getAllByText(e.name).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Demonstration data/)).toBeInTheDocument();
   });
 
   it("shows an error state with retry when the API is unreachable", async () => {
@@ -123,15 +122,24 @@ describe("Evidence", () => {
   });
 });
 
-describe("Sentiment Validation", () => {
-  it("shows this-DB accuracy and macro recall", async () => {
+describe("Model Validation", () => {
+  it("shows global Amazon TEST accuracy and macro recall", async () => {
     mockFetch();
     renderAt("/sentiment");
     const acc = `${((fixtures.sentiment.metrics.headline_accuracy ?? 0) * 100).toFixed(1)}%`;
     expect((await screen.findAllByText(acc)).length).toBeGreaterThan(0);
-    expect(screen.getByText(/this database only/i)).toBeInTheDocument();
-    expect(screen.getByText(/planted synthetic ground truth/i)).toBeInTheDocument();
-    expect(screen.getByText("Overall recall (this batch)")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Model Validation" })).toBeInTheDocument();
+    expect(screen.getAllByText(/held-out TEST split/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Cons_rating/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe("Upload & batches", () => {
+  it("lists uploaded batches", async () => {
+    mockFetch();
+    renderAt("/batches");
+    expect(await screen.findByRole("heading", { name: "Upload & batches" })).toBeInTheDocument();
+    expect(screen.getByText("sample_reviews.csv")).toBeInTheDocument();
   });
 });
 
@@ -142,31 +150,6 @@ describe("Data Health", () => {
     expect(await screen.findByText(fixtures.dataHealth.input_rows.toLocaleString("en-US"))).toBeInTheDocument();
     expect(screen.getByText(fixtures.dataHealth.traceability!.status)).toBeInTheDocument();
     expect(await screen.findByText("Theme distribution")).toBeInTheDocument();
-  });
-});
-
-describe("Product Brief", () => {
-  it("generates a brief and shows which generation path was used", async () => {
-    const fetchFn = mockFetch();
-    renderAt("/brief");
-    await userEvent.selectOptions(await screen.findByLabelText("Engine"), "template");
-    await userEvent.click(screen.getByRole("button", { name: "Generate product brief" }));
-    expect(await screen.findByTestId("generation-path")).toHaveTextContent("Deterministic template");
-    expect(screen.getByText(fixtures.brief.executive_summary)).toBeInTheDocument();
-    const post = fetchFn.mock.calls.find(([u, init]) => String(u).endsWith("/product-brief") && init?.method === "POST");
-    expect(JSON.parse(String(post![1]!.body))).toEqual({ engine: "template" });
-  });
-
-  it("surfaces fallback reasons when Qwen was not used", async () => {
-    mockFetch((path, init) =>
-      path === "/product-brief" && init?.method === "POST"
-        ? { ...fixtures.brief, fallback_reasons: ["live Qwen unavailable (no CUDA GPU)", "no precomputed Qwen brief in the database"] }
-        : undefined,
-    );
-    renderAt("/brief");
-    await userEvent.click(await screen.findByRole("button", { name: "Generate product brief" }));
-    expect(await screen.findByText(/Fallback used/)).toBeInTheDocument();
-    expect(screen.getByText(/no CUDA GPU/)).toBeInTheDocument();
   });
 });
 

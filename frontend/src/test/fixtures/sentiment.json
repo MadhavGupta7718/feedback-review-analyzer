@@ -1,76 +1,52 @@
 {
-  "evaluation_date_utc": "2026-10-03T19:33:00+00:00",
-  "model": "cardiffnlp/twitter-roberta-base-sentiment-latest",
-  "model_revision": "3216a57f2a0d9c45a2e6c20157c20c49fb4bf9c7",
-  "dataset": "this analytics database only",
+  "evaluation_date_utc": "2026-10-04T06:00:00+00:00",
+  "model": "artifacts/models/amazon_roberta_sentiment",
+  "model_revision": "amazon-finetune",
+  "dataset": "Amazon clothing reviews (Review + Cons_rating)",
   "device": "cuda",
-  "gpu": "NVIDIA GeForce RTX 4050 Laptop GPU",
-  "ground_truth_source": "planted_gt_sentiment",
-  "ground_truth_note": "Labels come from planted synthetic ground truth.",
+  "ground_truth_note": "Labels from Cons_rating star ratings (weak labels). Metrics are on the held-out TEST split only.",
+  "methodology": "3-class fine-tune of RoBERTa on Amazon clothing reviews. 80/10/10 deterministic text-hash split with no train/test overlap. Macro recall = mean of per-class recall on TEST.",
+  "scope": "global_model_evaluation",
   "sample": {
-    "size": 21955,
+    "size": 4812,
     "label_counts": {
-      "negative": 11000,
-      "neutral": 3000,
-      "positive": 7955
+      "negative": 800,
+      "neutral": 900,
+      "positive": 3112
     },
-    "selection": "all labelled reviews kept in this batch after cleaning"
+    "selection": "held-out Amazon clothing TEST split (sha256 text-hash 80/10/10)"
   },
-  "methodology": "Per-batch evaluation. 3-class accuracy/precision/recall/F1 use the model's argmax label. Macro recall is the unweighted mean of per-class recall (the optimisation target for this project). Binary metrics (when present) score only rows whose ground truth is negative or positive.",
   "metrics": {
+    "headline_accuracy": 0.8123,
+    "headline_macro_recall": 0.7641,
+    "macro_recall": 0.7641,
     "three_class": {
-      "n": 21955,
-      "accuracy": 0.8863,
-      "macro_f1": 0.82,
+      "n": 4812,
+      "accuracy": 0.8123,
+      "macro_f1": 0.75,
+      "macro_recall": 0.7641,
       "per_class": {
-        "negative": { "precision": 0.9, "recall": 0.9868, "f1": 0.94, "support": 11000 },
-        "neutral": { "precision": 0.72, "recall": 0.4175, "f1": 0.53, "support": 3000 },
-        "positive": { "precision": 0.92, "recall": 0.9876, "f1": 0.95, "support": 7955 }
+        "negative": { "precision": 0.78, "recall": 0.74, "f1": 0.76, "support": 800 },
+        "neutral": { "precision": 0.55, "recall": 0.61, "f1": 0.58, "support": 900 },
+        "positive": { "precision": 0.9, "recall": 0.9423, "f1": 0.92, "support": 3112 }
       },
       "confusion": {
-        "negative": { "negative": 10855, "neutral": 100, "positive": 45 },
-        "neutral": { "negative": 900, "neutral": 1253, "positive": 847 },
-        "positive": { "negative": 40, "neutral": 58, "positive": 7857 }
-      },
-      "macro_recall": 0.7973
+        "negative": { "negative": 592, "neutral": 140, "positive": 68 },
+        "neutral": { "negative": 120, "neutral": 549, "positive": 231 },
+        "positive": { "negative": 45, "neutral": 135, "positive": 2932 }
+      }
     },
-    "binary_forced": {
-      "n": 18955,
-      "accuracy": 0.97,
-      "macro_f1": 0.97,
-      "negative": { "precision": 0.97, "recall": 0.98, "f1": 0.975, "support": 11000 },
-      "positive": { "precision": 0.97, "recall": 0.96, "f1": 0.965, "support": 7955 }
-    },
-    "strict_3class": {
-      "n": 18955,
-      "accuracy": 0.95,
-      "macro_f1": 0.95,
-      "negative": { "precision": 0.96, "recall": 0.95, "f1": 0.955, "support": 11000 },
-      "positive": { "precision": 0.95, "recall": 0.95, "f1": 0.95, "support": 7955 }
-    },
-    "neutral_prediction_rate": 0.07,
-    "macro_recall": 0.7973,
-    "headline_accuracy": 0.8863,
-    "headline_macro_recall": 0.7973,
     "per_class": {
-      "negative": { "precision": 0.9, "recall": 0.9868, "f1": 0.94, "support": 11000 },
-      "neutral": { "precision": 0.72, "recall": 0.4175, "f1": 0.53, "support": 3000 },
-      "positive": { "precision": 0.92, "recall": 0.9876, "f1": 0.95, "support": 7955 }
+      "negative": { "precision": 0.78, "recall": 0.74, "f1": 0.76, "support": 800 },
+      "neutral": { "precision": 0.55, "recall": 0.61, "f1": 0.58, "support": 900 },
+      "positive": { "precision": 0.9, "recall": 0.9423, "f1": 0.92, "support": 3112 }
     },
     "confusion_3x3": {
-      "negative": { "negative": 10855, "neutral": 100, "positive": 45 },
-      "neutral": { "negative": 900, "neutral": 1253, "positive": 847 },
-      "positive": { "negative": 40, "neutral": 58, "positive": 7857 }
-    }
+      "negative": { "negative": 592, "neutral": 140, "positive": 68 },
+      "neutral": { "negative": 120, "neutral": 549, "positive": 231 },
+      "positive": { "negative": 45, "neutral": 135, "positive": 2932 }
+    },
+    "neutral_prediction_rate": null
   },
-  "batch_evaluation": {
-    "overall_recall": {
-      "sentiment_macro_recall": 0.7973,
-      "theme_recall": 1.0,
-      "radar_recall": 0.8,
-      "pii_recall": 1.0,
-      "mean_available_recalls": 0.8993,
-      "note": "Mean of whichever recall scores this batch can compute (sentiment / themes / radar / PII)."
-    }
-  }
+  "split": { "train": 38661, "val": 4830, "test": 4812, "method": "sha256(text)%100 → 80/10/10" }
 }

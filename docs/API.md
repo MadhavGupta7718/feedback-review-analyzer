@@ -37,11 +37,14 @@ pip install -r requirements-api.txt; uvicorn backend.app.main:app --port 8000
 | GET | `/issues/{theme_id}/evidence` | The evidence reviews (radar evidence and theme representatives) as full redacted review records |
 | GET | `/reviews` | Paginated redacted reviews: `total`, `limit`, `offset`, `reviews` |
 | GET | `/reviews/{review_id}` | One review with class probabilities, theme similarity and where it is used as evidence |
-| GET | `/sentiment/validation` | This-DB sentiment eval: 3-class accuracy/macro recall, confusion, optional binary on non-neutral truth |
-| GET | `/drift` | Current-vs-previous drift (sentiment PSI, theme PSI, volume, length KS) and weekly drift vs baseline |
-| GET | `/data-health` | Ingestion counts, rejects, duplicates, PII redactions by type, this-batch recall summary, traceability audit |
-| GET | `/model-info` | Model revisions, offline verification, hardware of the pipeline run, performance, brief engine status |
-| POST | `/product-brief` | Product brief (see below) |
+| GET | `/model/evaluation` | Global Amazon holdout TEST metrics for the fine-tuned 3-class model (alias: `/sentiment/validation`) |
+| GET | `/drift` | Current-vs-previous drift when dates exist; otherwise `{status:"unavailable", message}` |
+| GET | `/data-health` | Ingestion counts, rejects, duplicates, PII redactions, traceability; `dates_available` flag |
+| GET | `/model-info` | Model revisions, offline verification, hardware, `amazon_model_installed` / `amazon_eval_present` |
+| GET | `/batches` | List uploaded batches + active DB path |
+| POST | `/batches/upload` | Multipart CSV upload → background pipeline into `artifacts/cache/batches/{id}.db` |
+| GET | `/batches/jobs/{job_id}` | Upload job status (`running` / `done` / `error`) |
+| POST | `/batches/{batch_id}/activate` | Set the active analytics DB for subsequent reads |
 
 ### Query parameters
 

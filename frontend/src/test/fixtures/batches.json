@@ -1,0 +1,16 @@
+{
+  "batches": [
+    {
+      "batch_id": "abc123def456",
+      "name": "sample_reviews.csv",
+      "filename": "sample_reviews.csv",
+      "db_path": "artifacts/cache/batches/abc123def456.db",
+      "created_at_utc": "2026-10-04T06:00:00+00:00",
+      "reviews": 500,
+      "dates_available": false,
+      "n_themes": 8,
+      "active": true
+    }
+  ],
+  "active_db": "artifacts/cache/batches/abc123def456.db"
+}

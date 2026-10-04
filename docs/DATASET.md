@@ -3,11 +3,13 @@
 ## Handling rules
 
 - This product is **review-based**. Tweet corpora are not part of the dashboard path.
-- Each pipeline run writes **one analytics DB**. Accuracy / recall for that batch live **inside that DB only**.
-  Opening the dashboard with `--db path/to/batch.db` shows metrics for that file alone — never mixed with another dataset.
-- Raw CSVs are gitignored. The demo database is regenerated from the synthetic generator (`seed=42`).
+- Each upload / pipeline run writes **one analytics DB** under `artifacts/cache/batches/` (or a path you pass).
+  Uploads do **not** get a Sentiment Validation accuracy page.
+- **Global model accuracy** comes from the Amazon clothing fine-tune holdout
+  (`artifacts/reports/amazon_sentiment_eval.json`), shown on Model Validation.
+- Raw CSVs are gitignored. Prepare train data with `scripts/prepare_amazon_clothing.py`.
 - Archive scripts under `scripts/` / `ml/evaluation/s140_split.py` may still exist for offline study; they are not
-  wired into `ml.pipeline --source` or the API.
+  wired into the product accuracy UI.
 
 ## 1. Synthetic "Nimbus" app reviews (planted ground truth)
 
@@ -28,30 +30,39 @@ Planted ground truth makes theme recovery, radar statuses, drift and PII recall 
 **Limitation:** the reviews come from templates, so clustering is easier than on real data. Results on real reviews will be lower
 than the synthetic scores in `docs/RESULTS.md`.
 
-## Bring your own reviews
+## Amazon clothing train corpus
 
 ```powershell
-.\.venv\Scripts\python.exe -m ml.pipeline --source path\to\reviews.csv --db artifacts\my_reviews.db
+.\.venv\Scripts\python.exe scripts\prepare_amazon_clothing.py
+.\.venv\Scripts\python.exe scripts\finetune_amazon_sentiment.py
 ```
 
-Column names are matched case-insensitively. Optional label columns enable **this-DB-only** evaluation
-(skipped automatically when absent — the pipeline still runs):
+Writes `data/interim/amazon_clothing/reviews.csv` from `Review` + `Cons_rating` (1–2 neg, 3 neu, 4–5 pos).
+`created_at` on that interim file is **synthetic (hash-based) for the training corpus only** — never used as
+upload radar evidence. Holdout metrics land in `artifacts/reports/amazon_sentiment_eval.json`.
+
+## Bring your own reviews
+
+Prefer the UI: **Upload & batches**. Or CLI:
+
+```powershell
+.\.venv\Scripts\python.exe -m ml.pipeline --source path\to\reviews.csv --db artifacts\cache\batches\my.db
+```
+
+Column names are matched case-insensitively:
 
 | Field | Required | Accepted column names |
 |---|---|---|
 | text | yes | text, review, review_text, content, body, comment, feedback |
-| date | yes | created_at, date, timestamp, review_date, time, at, datetime |
-| rating | no | rating, score, stars, star_rating (weak sentiment labels if no gt_sentiment) |
-| gt_sentiment | no | gt_sentiment, label, sentiment_label (`negative`/`neutral`/`positive` or neg/neu/pos) |
-| gt_theme | no | gt_theme, theme_label, topic_label (theme + radar planted recall) |
-| gt_pii | no | gt_pii, pii_types, planted_pii (`;`-separated types for PII recall) |
+| date | no | created_at, date, timestamp, review_date, time, at, datetime |
 | rating | no | rating, score, stars, star_rating |
 | platform | no | platform, os, device |
 | app version | no | app_version, version, review_created_version |
 | ID | no | review_id, id, reviewid |
 
-- **Dates:** ISO 8601 (with or without a timezone, converted to UTC) and common `d/m/Y` or `m/d/Y` forms are accepted. Ambiguous dates are read day-first.
-- **Why dates are required:** the Complaint Radar and drift compare time windows. Dates are never invented: a file without a date column is rejected with an explanation. Rows with an unparseable date are still analysed for sentiment and themes, but are left out of the time windows.
+- **Dates:** ISO 8601 and common `d/m/Y` or `m/d/Y` forms. Ambiguous dates are read day-first.
+- **Missing dates:** pipeline still runs sentiment / themes / PII / evidence. Radar and drift become
+  `{status:"unavailable"}` with a clear message. Dates are never invented for uploads.
 - **IDs:** missing, unsafe or duplicate IDs are replaced by `U000001`-style IDs.
 - **What gets stored:** the database records only the file name, never the local path.
 - **Window coverage:** the radar needs at least 28 days of data (two 14-day windows).

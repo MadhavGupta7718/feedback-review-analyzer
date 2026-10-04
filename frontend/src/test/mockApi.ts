@@ -1,5 +1,5 @@
 import { vi } from "vitest";
-import brief from "./fixtures/brief.json";
+import batches from "./fixtures/batches.json";
 import dataHealth from "./fixtures/data_health.json";
 import drift from "./fixtures/drift.json";
 import evidence from "./fixtures/evidence.json";
@@ -14,7 +14,7 @@ import sentiment from "./fixtures/sentiment.json";
 import theme from "./fixtures/theme.json";
 import themes from "./fixtures/themes.json";
 
-export const fixtures = { brief, dataHealth, drift, evidence, health, issue, issues, metrics, modelInfo, review, reviews, sentiment, theme, themes };
+export const fixtures = { batches, dataHealth, drift, evidence, health, issue, issues, metrics, modelInfo, review, reviews, sentiment, theme, themes };
 
 type Override = (url: string, init?: RequestInit) => unknown | undefined;
 
@@ -29,11 +29,12 @@ function route(path: string, init?: RequestInit): unknown {
   if (/^\/issues\/theme_\d{3}$/.test(p)) return issue;
   if (p === "/reviews") return reviews;
   if (/^\/reviews\/[\w-]+$/.test(p)) return review;
-  if (p === "/sentiment/validation") return sentiment;
+  if (p === "/model/evaluation" || p === "/sentiment/validation") return sentiment;
   if (p === "/drift") return drift;
   if (p === "/data-health") return dataHealth;
   if (p === "/model-info") return modelInfo;
-  if (p === "/product-brief" && init?.method === "POST") return brief;
+  if (p === "/batches") return batches;
+  if (p.startsWith("/batches/") && init?.method === "POST") return { ...batches.batches[0], active: true };
   return undefined;
 }
 

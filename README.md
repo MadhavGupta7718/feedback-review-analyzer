@@ -2,94 +2,99 @@
 
 Microsoft hackathon project (problem 17, Student Edition: Feedback & Review Analyzer).
 
-A tool that reads a batch of reviews and reports the main themes, common complaints and overall sentiment in a
-dashboard, with enterprise guarantees:
+Upload a review CSV and get themes, complaint radar, evidence, and data health — powered by a **3-class RoBERTa
+sentiment model fine-tuned on Amazon clothing reviews**. Accuracy is reported once, globally, on that model's held-out
+TEST split (Model Validation). Uploaded batches get analytics only — no per-upload accuracy page.
 
-- **Traceable:** every theme and complaint links to real review IDs and redacted verbatims; an audit checks every link on
-  every run.
-- **Validated:** accuracy and recall are scored **inside each analytics DB** from that batch only (planted labels on
-  Nimbus; star-rating weak labels on review CSVs). No cross-dataset metrics on the dashboard.
-- **Private:** PII is redacted before anything reaches the database, API, dashboard, logs or LLM (100% recall on planted
-  PII rows in the synthetic batch).
-- **Monitored:** sentiment, theme mix, volume and review-length drift are tracked between time windows.
-- **Complaint Radar:** flags complaints that are *growing*, not just the biggest ones, and shows the exact rule and
-  calculation behind every flag (**View why**).
-- **Product brief:** a local Qwen2.5-3B (4-bit on the laptop GPU) words the summary. It never sees a number: a
-  validator rejects unsafe output and code fills in every value, with a deterministic fallback.
+Enterprise guarantees:
 
-## Measured results
+- **Traceable:** every theme and complaint links to real review IDs and redacted verbatims.
+- **Validated (global):** accuracy / macro recall come from the Amazon holdout TEST set only.
+- **Private:** PII is redacted before anything reaches the database, API, or dashboard.
+- **Monitored:** when review dates exist, sentiment / theme / volume drift is tracked between windows.
+- **Complaint Radar:** flags growing complaints when timestamps are present; otherwise shows a clear “dates required” empty state.
+
+## Measured results (Amazon fine-tune)
 
 | | |
 |---|---|
-| End-to-end pipeline (Nimbus mock, ~21K reviews) | GPU-accelerated on RTX 4050; metrics stored in that DB |
-| Sentiment (this-batch 3-class) | accuracy + macro recall (neg/neu/pos) scored only on reviews in the open DB |
-| Sentiment on public review sets (offline study) | Amazon polarity ~0.92, Yelp polarity ~0.87 (not mixed into other dashboards) |
-| Themes / Radar / PII (synthetic planted truth) | per-DB theme recall, radar pattern recall, PII recall → mean available recall |
-
-Everything measured is in `docs/RESULTS.md`, and the phase-by-phase audit trail, including failed attempts, is in
-`docs/DEVELOPMENT_LOG.md`.
+| Training data | Amazon clothing CSV (`Review` + `Cons_rating` → neg/neu/pos) |
+| Split | Deterministic 80/10/10 by `sha256(text)` |
+| Model | Fine-tuned `cardiffnlp/twitter-roberta-base-sentiment-latest` → `artifacts/models/amazon_roberta_sentiment/` |
+| Headline metrics | TEST accuracy + macro recall in `artifacts/reports/amazon_sentiment_eval.json` |
 
 ## Quick start
 
-Requirements: Windows or Linux, Python 3.11, Node 22. An NVIDIA GPU is optional (used automatically).
+Requirements: Windows or Linux, Python 3.11, Node 22. An NVIDIA GPU is optional (used automatically for train / pipeline).
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 copy .env.example .env
-.\.venv\Scripts\python.exe scripts\download_models.py      # one-time, public models, no token
+.\.venv\Scripts\python.exe scripts\download_models.py      # one-time base models
 cd frontend; npm ci; cd ..
-
-.\.venv\Scripts\python.exe scripts\run_demo.py --serve     # API :8000 + dashboard http://127.0.0.1:5173
 ```
 
-You can browse the committed, precomputed database without downloading any model:
+### 1) Train the product sentiment model (once)
+
+```powershell
+.\.venv\Scripts\python.exe scripts\prepare_amazon_clothing.py
+.\.venv\Scripts\python.exe scripts\finetune_amazon_sentiment.py --epochs 3 --batch-size 16
+```
+
+This writes:
+
+- `artifacts/models/amazon_roberta_sentiment/`
+- `artifacts/reports/amazon_sentiment_eval.json` (served by Model Validation)
+
+### 2) Run API + dashboard
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --port 8000
+# other terminal:
+cd frontend; npm run dev
+```
+
+Open http://127.0.0.1:5173 → **Upload & batches** to drop a CSV. Each upload becomes
+`artifacts/cache/batches/{id}.db`. Use **View** to activate it and open Overview / Themes / Radar / Evidence / Data Health.
+
+API-only (serves an existing DB; no torch needed unless you upload):
 
 ```powershell
 pip install -r requirements-api.txt
 uvicorn backend.app.main:app --port 8000
 ```
 
-To analyse your own reviews, run `python -m ml.pipeline --source reviews.csv`. The file needs a text column and a date
-column; see `docs/DATASET.md`.
+### CSV columns
 
-Real Amazon app reviews (Amazon Reviews 2023, Software category, with real dates):
+| Field | Required | Accepted names |
+|---|---|---|
+| text | yes | text, review, review_text, content, body, comment, feedback |
+| date | no | created_at, date, timestamp, review_date, … — without dates, Radar + Drift are unavailable |
+| rating | no | rating, score, stars, … |
 
-```powershell
-.\.venv\Scripts\python.exe scripts\prepare_amazon_reviews.py data\raw\reviews\amazon2023\raw\review_categories\Software.jsonl --end 2022-11-30 --max-rows 12000
-.\.venv\Scripts\python.exe -m ml.pipeline --source data\raw\reviews\amazon_software_recent.csv --db artifacts\cache\amazon_software.db
-.\.venv\Scripts\python.exe scripts\run_demo.py --serve --db artifacts\cache\amazon_software.db
-```
+Dates are never invented for uploads. Synthetic dates exist only on the Amazon **training** interim CSV.
 
 ## Documentation
 
 | Document | Contents |
 |---|---|
-| `docs/ARCHITECTURE.md` | Pipeline, privacy boundary, traceability, radar rules, brief paths |
-| `docs/API.md` | Endpoints, parameters, response shapes, errors, env vars |
-| `docs/DATASET.md` | Sentiment140 validation, synthetic dataset design, data-handling rules, CSV upload |
-| `docs/MODEL_CARD.md` | The three models, measured performance, guardrails, known weaknesses |
-| `docs/TESTING.md` | How to run each suite and what it covers |
-| `docs/RESULTS.md` | Measured results only |
-| `docs/DEMO.md` | Offline demo and a 5-minute storyline |
-| `docs/DEPLOYMENT.md` | Render + Vercel steps (not deployed yet) and the local production rehearsal |
-| `docs/DEVELOPMENT_LOG.md` | Chronological audit trail with every failed attempt |
-
-## Datasets
-
-| Dataset | Use |
-|---|---|
-| Synthetic "Nimbus" app reviews (deterministic, seed 42, ~21K) | Demo batch with planted ground truth for themes, Complaint Radar, drift, PII and 3-class sentiment |
-| Amazon / other review CSVs | Separate analytics DB per upload; metrics from that file only |
-
-Raw data is never committed or served. See `docs/DATASET.md`.
+| `docs/PROJECT_HANDBOOK.md` | **Full project story:** backend, frontend, model selection, recall hit-and-trial, results |
+| `docs/ARCHITECTURE.md` | Pipeline, privacy boundary, radar rules |
+| `docs/API.md` | Endpoints including `/batches` and `/model/evaluation` |
+| `docs/DATASET.md` | Upload schema and Amazon train corpus |
+| `docs/MODEL_CARD.md` | Models and known weaknesses |
+| `docs/TESTING.md` | How to run test suites |
+| `docs/RESULTS.md` | Measured results |
+| `docs/DEMO.md` | Demo storyline |
+| `docs/DEPLOYMENT.md` | Render + Vercel notes |
+| `docs/DEVELOPMENT_LOG.md` | Audit trail |
 
 ## Known limitations
 
-- Theme and radar quality is measured on synthetic reviews generated from templates, so results on real reviews will be lower.
-- Neutral sentiment recall depends on the batch; star-rating weak labels (3★ = neutral) are noisy on real CSVs.
-- Names in free text without a cue ("this is X", "Mr X") are not redacted.
-- Live Qwen needs a CUDA GPU and takes 1–3 minutes; CPU hosts serve the stored, validated brief.
-- Radar statuses show association, not cause.
-- **Not deployed yet.** The configuration is ready and rehearsed locally.
+- Theme / radar quality is harder on free-form real reviews than on synthetic templates.
+- Star-rating weak labels (3★ = neutral) are noisy; Model Validation reflects that.
+- Names in free text without a cue are not redacted.
+- Radar / drift need real timestamps on the uploaded file.
+- **Not deployed yet.** Configuration is ready for local rehearsal.

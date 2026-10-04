@@ -15,13 +15,15 @@ from typing import Literal
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from fastapi import FastAPI, HTTPException, Path as PathParam, Query, Request  # noqa: E402
+from fastapi import FastAPI, File, HTTPException, Path as PathParam, Query, Request, UploadFile  # noqa: E402
 from fastapi.exceptions import RequestValidationError  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
+from backend.app import batches as batch_reg  # noqa: E402
 from backend.app import db  # noqa: E402
+from ml import config  # noqa: E402
 from ml.pii import get_safe_logger  # noqa: E402
 
 log = get_safe_logger("api")
@@ -128,12 +130,16 @@ def list_issues(status: str | None = Query(default=None, pattern=r"^[A-Z_,]{1,12
     with db.connect() as con:
         meta = db.report(con, "radar_meta") or {}
         items = [json.loads(r["data"]) for r in con.execute("SELECT data FROM issues ORDER BY priority DESC")]
+        m = db.meta(con)
     if wanted:
         items = [i for i in items if i["status"] in wanted]
     order = {"NEW": 0, "EMERGING": 1, "STABLE": 2, "DECLINING": 3, "INSUFFICIENT_EVIDENCE": 4, "NOT_A_COMPLAINT": 5, "NO_DATA": 6}
-    items.sort(key=lambda i: (order.get(i["status"], 9), -i["priority"]))
+    items.sort(key=lambda i: (order.get(i["status"], 9), -(i.get("priority") or 0)))
     return {"count": len(items), "window": meta.get("window"), "formula": meta.get("formula"), "params": meta.get("params"),
             "rules": meta.get("rules"),
+            "dates_available": meta.get("dates_available", m.get("dates_available", True)),
+            "message": meta.get("message") or m.get("dates_message"),
+            "status": meta.get("status") or ("ok" if items else "unavailable"),
             "issues": [{k: v for k, v in i.items() if k not in ("calculation",)} for i in items]}
 
 
@@ -199,13 +205,42 @@ def get_review(review_id: str = PathParam(pattern=REVIEW_ID)):
 
 
 @app.get("/sentiment/validation")
-def sentiment_validation():
-    with db.connect() as con:
-        sv = db.report(con, "sentiment_validation")
-    if sv is None:
-        raise HTTPException(404, detail="Sentiment validation has not been run")
-    sv.get("sample", {}).pop("preprocessing", None)
-    return sv
+@app.get("/model/evaluation")
+def model_evaluation():
+    """Global Amazon holdout metrics for the fine-tuned product model (not per-upload)."""
+    path = config.AMAZON_SENTIMENT_EVAL
+    if not path.exists():
+        raise HTTPException(404, detail="Model evaluation report not found. Run scripts/finetune_amazon_sentiment.py")
+    rep = json.loads(path.read_text(encoding="utf-8"))
+    m = rep.get("metrics") or {}
+    test = m.get("test") or {}
+    return {
+        "evaluation_date_utc": rep.get("evaluation_date_utc"),
+        "model": rep.get("model_dir") or rep.get("model_base"),
+        "model_revision": "amazon-finetune",
+        "dataset": rep.get("dataset"),
+        "device": rep.get("device"),
+        "ground_truth_note": rep.get("ground_truth_note"),
+        "methodology": rep.get("methodology"),
+        "scope": "global_model_evaluation",
+        "sample": {
+            "size": test.get("n") or (rep.get("split") or {}).get("test"),
+            "label_counts": {k: (test.get("per_class") or {}).get(k, {}).get("support", 0)
+                             for k in ("negative", "neutral", "positive")},
+            "selection": "held-out Amazon clothing TEST split (sha256 text-hash 80/10/10)",
+        },
+        "metrics": {
+            "headline_accuracy": m.get("headline_accuracy") or test.get("accuracy"),
+            "headline_macro_recall": m.get("headline_macro_recall") or test.get("macro_recall"),
+            "macro_recall": m.get("headline_macro_recall") or test.get("macro_recall"),
+            "three_class": test,
+            "per_class": m.get("per_class") or test.get("per_class"),
+            "confusion_3x3": m.get("confusion_3x3") or test.get("confusion"),
+            "neutral_prediction_rate": None,
+        },
+        "split": rep.get("split"),
+        "hyperparams": rep.get("hyperparams"),
+    }
 
 
 @app.get("/drift")
@@ -223,25 +258,18 @@ def data_health():
         dh = db.report(con, "data_health")
         pii = db.report(con, "pii_audit") or {}
         trace = db.report(con, "traceability")
-        be = db.report(con, "batch_evaluation") or {}
+        m = db.meta(con)
     s = pii.get("synthetic", {})
-    # Prefer per-batch PII recall stored in this DB; fall back to offline synthetic audit file if present
-    batch_pii = (be.get("pii") or {})
     return {**(dh or {}), "traceability": trace,
             "pii_audit": {
-                "overall_recall": batch_pii.get("overall_recall", s.get("overall_recall")),
-                "recall_by_type": batch_pii.get("recall_by_type", s.get("recall_by_type")),
+                "overall_recall": s.get("overall_recall"),
+                "recall_by_type": s.get("recall_by_type"),
                 "false_positive_row_rate": s.get("false_positive_row_rate"),
             },
-            "batch_evaluation": {
-                "sentiment_macro_recall": (be.get("overall_recall") or {}).get("sentiment_macro_recall"),
-                "theme_recall": (be.get("overall_recall") or {}).get("theme_recall"),
-                "radar_recall": (be.get("overall_recall") or {}).get("radar_recall"),
-                "pii_recall": (be.get("overall_recall") or {}).get("pii_recall"),
-                "mean_available_recalls": (be.get("overall_recall") or {}).get("mean_available_recalls"),
-            },
+            "dates_available": (dh or {}).get("dates_available", m.get("dates_available")),
+            "dates_message": (dh or {}).get("dates_message") or m.get("dates_message"),
             "dataset_validation": {
-                "note": "Per-batch only. Tweet-corpus (Sentiment140) validation was removed from the product path.",
+                "note": "Upload batch analytics only. Model accuracy lives on Model Validation (Amazon holdout).",
                 "rows": (dh or {}).get("processed_reviews"),
                 "status": (trace or {}).get("status"),
             }}
@@ -249,31 +277,53 @@ def data_health():
 
 @app.get("/model-info")
 def model_info():
-    from ml.brief.service import qwen_status
-
-    with db.connect() as con:
-        models = {r["model"]: json.loads(r["data"]) for r in con.execute("SELECT model, data FROM model_versions")}
-        mv = db.report(con, "model_verification") or {}
-        hw = db.report(con, "hardware")
-        perf = db.report(con, "performance") or {}
-        qb = db.report(con, "qwen_brief")
+    try:
+        with db.connect() as con:
+            models = {r["model"]: json.loads(r["data"]) for r in con.execute("SELECT model, data FROM model_versions")}
+            mv = db.report(con, "model_verification") or {}
+            hw = db.report(con, "hardware")
+            perf = db.report(con, "performance") or {}
+    except db.DatabaseUnavailable:
+        models, mv, hw, perf = {}, {}, None, {}
     ver = {name: {k: v for k, v in rec.items() if k in ("state", "revision", "disk_gb", "load_seconds", "checks", "plan",
                                                          "gpu_memory_allocated_gb", "generation_seconds", "embedding_dim", "similarity")}
            for name, rec in mv.get("models", {}).items()}
     return {"pipeline_models": models, "verification": ver, "verification_status": mv.get("status"),
             "verification_offline": mv.get("network_blocked"), "hardware_at_pipeline_run": hw,
             "performance": {k: v for k, v in perf.items() if k != "embedding"},
-            "brief_engine": qwen_status(), "precomputed_qwen_brief": bool(qb)}
+            "amazon_model_installed": (config.AMAZON_SENTIMENT_DIR / "config.json").exists(),
+            "amazon_eval_present": config.AMAZON_SENTIMENT_EVAL.exists()}
 
 
-class BriefRequest(BaseModel):
-    engine: Literal["auto", "qwen", "template"] = Field(default="auto")
+@app.get("/batches")
+def batches_list():
+    return {"batches": batch_reg.list_batches(), "active_db": str(db.db_path()) if db.db_path().exists() else None}
 
 
-@app.post("/product-brief")
-def product_brief(req: BriefRequest):
-    from ml.brief.service import generate_brief
+@app.post("/batches/upload")
+async def batches_upload(file: UploadFile = File(...)):
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(422, detail="Upload a .csv file with a review text column")
+    content = await file.read()
+    if len(content) > 80_000_000:
+        raise HTTPException(413, detail="File too large (max 80MB)")
+    if not content.strip():
+        raise HTTPException(422, detail="Empty file")
+    job = batch_reg.start_upload(file.filename, content)
+    return job
 
-    if not db.db_path().exists():
-        raise db.DatabaseUnavailable()
-    return generate_brief(db.db_path(), req.engine)
+
+@app.get("/batches/jobs/{job_id}")
+def batches_job(job_id: str):
+    job = batch_reg.job_status(job_id)
+    if job is None:
+        raise HTTPException(404, detail="Job not found")
+    return job
+
+
+@app.post("/batches/{batch_id}/activate")
+def batches_activate(batch_id: str):
+    try:
+        return batch_reg.activate(batch_id)
+    except KeyError:
+        raise HTTPException(404, detail="Batch not found")

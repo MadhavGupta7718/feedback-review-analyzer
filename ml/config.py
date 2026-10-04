@@ -57,8 +57,15 @@ OPTIONAL_MODELS = [NER_MODEL]
 # evaluation-only baselines for the sentiment study; never used by the product pipeline
 COMPARISON_MODELS = ["siebert/sentiment-roberta-large-english", "distilbert/distilbert-base-uncased-finetuned-sst-2-english"]
 FINETUNED_SENTIMENT_DIR = ARTIFACTS_DIR / "models" / "roberta-s140-binary"
+# Product sentiment model after Amazon clothing fine-tune (3-class). Used when present.
+AMAZON_SENTIMENT_DIR = ARTIFACTS_DIR / "models" / "amazon_roberta_sentiment"
+AMAZON_SENTIMENT_EVAL = ARTIFACTS_DIR / "reports" / "amazon_sentiment_eval.json"
 # Binary decision on P(pos) / (P(pos) + P(neg)) when a 3-class prediction must be scored against 2-class truth.
 # Tuned for accuracy on the Sentiment140 VALIDATION split only (artifacts/reports/sentiment_study_val.json).
 SENTIMENT_BINARY_THRESHOLD = 0.725
+
+BATCHES_DIR = ARTIFACTS_DIR / "cache" / "batches"
+BATCHES_INDEX = BATCHES_DIR / "index.json"
+UPLOADS_DIR = DATA_DIR / "uploads"
 
 EMBEDDING_DIM = 384

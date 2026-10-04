@@ -113,8 +113,8 @@ def parse_any_date(v: str | None) -> datetime | None:
 
 
 def load_csv(path: Path) -> tuple[list[dict], dict]:
-    """Any review CSV: a text column is required; timestamps are required because the radar and drift compare
-    time windows (they are never invented). Column names are matched case-insensitively against CSV_ALIASES."""
+    """Any review CSV: a text column is required. Timestamps are optional — without them Radar/drift are
+    marked unavailable (dates are never invented for uploads). Column names match CSV_ALIASES case-insensitively."""
     if not path.exists():
         raise FileNotFoundError(f"CSV not found: {path}")
     raw_bytes = path.read_bytes()
@@ -127,17 +127,17 @@ def load_csv(path: Path) -> tuple[list[dict], dict]:
     cols = {field: next((header[a] for a in aliases if a in header), None) for field, aliases in CSV_ALIASES.items()}
     if cols["text"] is None:
         raise ValueError(f"no review text column; expected one of {CSV_ALIASES['text']}")
-    if cols["created_at"] is None:
-        raise ValueError(f"no timestamp column; expected one of {CSV_ALIASES['created_at']} "
-                         "(the Complaint Radar and drift need review dates)")
     rows, seen_ids, bad_dates = [], set(), 0
     for n, r in enumerate(reader, 1):
         rid = (r.get(cols["review_id"]) or "").strip() if cols["review_id"] else ""
         if not SAFE_ID.match(rid) or rid in seen_ids:
             rid = f"U{n:06d}"
         seen_ids.add(rid)
-        dt = parse_any_date(r.get(cols["created_at"]))
-        bad_dates += dt is None
+        dt = parse_any_date(r.get(cols["created_at"])) if cols["created_at"] else None
+        if cols["created_at"] and dt is None:
+            bad_dates += 1
+        elif not cols["created_at"]:
+            bad_dates += 1
         rating = (r.get(cols["rating"]) or "").strip() if cols["rating"] else ""
         try:
             rating_v = int(round(float(rating))) if rating else None
@@ -145,7 +145,6 @@ def load_csv(path: Path) -> tuple[list[dict], dict]:
             rating_v = None
         text = r.get(cols["text"])
         gt_sent = (r.get(cols["gt_sentiment"]) or "").strip().lower() if cols.get("gt_sentiment") else ""
-        # Accept common short aliases from future labelled CSVs
         gt_sent = {"neg": "negative", "neu": "neutral", "pos": "positive",
                    "0": "negative", "2": "neutral", "4": "positive",
                    "1": "negative", "3": "neutral", "5": "positive"}.get(gt_sent, gt_sent)
@@ -163,14 +162,15 @@ def load_csv(path: Path) -> tuple[list[dict], dict]:
         if gt_pii:
             row["gt_pii"] = gt_pii
         rows.append(row)
-    if not rows or bad_dates == len(rows):
-        raise ValueError("no row has a parseable date")
-    has_labels = any(r.get("gt_sentiment") or r.get("rating") is not None for r in rows)
+    if not rows:
+        raise ValueError("CSV has no data rows")
+    has_dates = any(r.get("created_at") for r in rows)
     info = {"name": f"Uploaded CSV ({path.name})", "kind": "csv", "path": path.name,
             "columns": {k: v for k, v in cols.items() if v}, "rows_without_date": bad_dates,
-            "note": ("User-supplied reviews. Evaluation uses planted labels and/or star ratings from THIS file only."
-                     if has_labels else
-                     "User-supplied reviews; no sentiment labels/ratings — evaluation metrics for sentiment are unavailable.")}
+            "dates_available": has_dates,
+            "note": ("User-supplied reviews. Complaint Radar and drift require dates; "
+                     + ("timestamps present." if has_dates else
+                        "no usable dates — Radar/drift will be unavailable for this batch."))}
     return rows, info
 
 
@@ -357,45 +357,74 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
         theme_eval = evaluate_against_truth(tres.labels, theme_truth, tres.themes)
 
     dated = [r for r in cleaned if r["created_at"]]
-    end = max(r["created_at"] for r in dated)
-    first = min(r["created_at"] for r in dated)
-    n_weeks = max(1, int(np.ceil((end - first).total_seconds() / (7 * 86400))))
-    themes = theme_rows(tres.themes, tres.labels, cleaned, end, n_weeks)
-    radar_reviews = [{"review_id": r["review_id"], "created_at": r["created_at"], "theme_id": r["theme_id"],
-                      "sentiment": r["sentiment"], "confidence": r["confidence"], "similarity": r["theme_similarity"],
-                      "app_version": r.get("app_version"), "platform": r.get("platform")} for r in cleaned]
-    radar = timer.run("complaint_radar", compute_radar, radar_reviews, themes, RadarParams())
-    radar_by_theme = {i["theme_id"]: i for i in radar["items"]}
-    for t in themes:
-        it = radar_by_theme[t["theme_id"]]
-        t.update(radar_status=it["status"], growth_pct=it["growth_pct"], growth_label=it["growth_label"], priority=it["priority"])
+    dates_available = len(dated) > 0 and len(dated) >= max(1, int(0.5 * len(cleaned)))
+    date_msg = ("This view needs review dates; none were found in this dataset (or most rows lack parseable dates)."
+                if not dates_available else None)
 
-    w = radar["window"]
-    cur_start, prev_start = datetime.fromisoformat(w["current_start"]), datetime.fromisoformat(w["previous_start"])
-    cur = [r for r in dated if cur_start < r["created_at"] <= end]
-    prev = [r for r in dated if prev_start < r["created_at"] <= cur_start]
-    theme_ids = [t["theme_id"] for t in themes]
-    drift = timer.run("drift", lambda: {
-        "current_vs_previous": {**drift_report(prev, cur, 14, 14, theme_ids=theme_ids),
-                                "reference_window": [prev_start.isoformat(), cur_start.isoformat()],
-                                "current_window": [cur_start.isoformat(), end.isoformat()]},
-        "weekly_vs_baseline": weekly_drift(dated, end, n_weeks, theme_ids),
-        "note": ("Drift is measured on the batch's own timestamps. " +
-                 {"synthetic": "Synthetic timestamps: drift reflects planted patterns, not production data."
-                  }.get(dataset_info["kind"], "Timestamps come from the uploaded CSV."))})
+    if dates_available:
+        end = max(r["created_at"] for r in dated)
+        first = min(r["created_at"] for r in dated)
+        n_weeks = max(1, int(np.ceil((end - first).total_seconds() / (7 * 86400))))
+        themes = theme_rows(tres.themes, tres.labels, cleaned, end, n_weeks)
+        radar_reviews = [{"review_id": r["review_id"], "created_at": r["created_at"], "theme_id": r["theme_id"],
+                          "sentiment": r["sentiment"], "confidence": r["confidence"], "similarity": r["theme_similarity"],
+                          "app_version": r.get("app_version"), "platform": r.get("platform")} for r in cleaned]
+        radar = timer.run("complaint_radar", compute_radar, radar_reviews, themes, RadarParams())
+        radar_by_theme = {i["theme_id"]: i for i in radar["items"]}
+        for t in themes:
+            it = radar_by_theme[t["theme_id"]]
+            t.update(radar_status=it["status"], growth_pct=it["growth_pct"], growth_label=it["growth_label"], priority=it["priority"])
+        w = radar["window"]
+        cur_start, prev_start = datetime.fromisoformat(w["current_start"]), datetime.fromisoformat(w["previous_start"])
+        cur = [r for r in dated if cur_start < r["created_at"] <= end]
+        prev = [r for r in dated if prev_start < r["created_at"] <= cur_start]
+        theme_ids = [t["theme_id"] for t in themes]
+        drift = timer.run("drift", lambda: {
+            "status": "ok",
+            "dates_available": True,
+            "current_vs_previous": {**drift_report(prev, cur, 14, 14, theme_ids=theme_ids),
+                                    "reference_window": [prev_start.isoformat(), cur_start.isoformat()],
+                                    "current_window": [cur_start.isoformat(), end.isoformat()]},
+            "weekly_vs_baseline": weekly_drift(dated, end, n_weeks, theme_ids),
+            "note": "Drift is measured on the batch's own timestamps from the uploaded CSV."})
+        date_range = [first.isoformat(), end.isoformat()]
+        emerging = [i for i in radar["items"] if i["status"] in ("NEW", "EMERGING")]
+        drift_status = drift["current_vs_previous"]["overall_status"]
+        drift_metrics = {k: {"value": v["value"], "status": v["status"]} for k, v in drift["current_vs_previous"]["metrics"].items()}
+    else:
+        end = datetime.now(timezone.utc).replace(tzinfo=None)
+        themes = theme_rows(tres.themes, tres.labels, cleaned, end, 1)
+        for t in themes:
+            t.update(radar_status="NO_DATA", growth_pct=None, growth_label="n/a", priority=0.0)
+        radar = {
+            "status": "unavailable",
+            "dates_available": False,
+            "message": date_msg,
+            "params": {},
+            "formula": None,
+            "rules": None,
+            "window": None,
+            "items": [],
+        }
+        drift = {
+            "status": "unavailable",
+            "dates_available": False,
+            "message": date_msg,
+            "current_vs_previous": {"overall_status": "unavailable", "metrics": {}},
+            "weekly_vs_baseline": [],
+            "note": date_msg,
+        }
+        date_range = None
+        emerging = []
+        drift_status = "unavailable"
+        drift_metrics = {}
+
     trace = timer.run("traceability_audit", audit_traceability, cleaned, themes, radar)
 
-    batch_metrics = timer.run(
-        "batch_evaluation",
-        batch_eval.build,
-        cleaned,
-        model=config.SENTIMENT_MODEL,
-        revision=sent_rev,
-        device=device,
-        theme_eval=theme_eval,
-        themes=themes,
-        radar_items=radar["items"],
-    )
+    # Per-upload batch evaluation (planted/star) is NOT used for the product accuracy page.
+    # Global model metrics live in artifacts/reports/amazon_sentiment_eval.json.
+    batch_metrics = {"scope": "upload_batch_analytics_only", "sentiment": None, "themes": None, "radar": None, "pii": None,
+                     "overall_recall": None}
 
     sent_counts = Counter(r["sentiment"] for r in cleaned)
     n = len(cleaned)
@@ -406,13 +435,13 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
         "n_themes": len(themes),
         "n_complaint_themes": sum(1 for t in themes if t["is_complaint"]),
         "top_complaint": max((t for t in themes if t["is_complaint"]), key=lambda t: t["negative_count"], default=None),
-        "emerging": [i for i in radar["items"] if i["status"] in ("NEW", "EMERGING")],
+        "emerging": emerging,
         "pii_redactions_total": sum(clean_rep.pii_redactions.values()),
-        "drift_status": drift["current_vs_previous"]["overall_status"],
-        "date_range": [first.isoformat(), end.isoformat()],
+        "drift_status": drift_status,
+        "date_range": date_range,
+        "dates_available": dates_available,
+        "dates_message": date_msg,
         "avg_rating": round(float(np.mean([r["rating"] for r in cleaned if r.get("rating")])), 2) if any(r.get("rating") for r in cleaned) else None,
-        "evaluation_macro_recall": (batch_metrics.get("overall_recall") or {}).get("mean_available_recalls"),
-        "evaluation_sentiment_accuracy": ((batch_metrics.get("sentiment") or {}).get("metrics") or {}).get("headline_accuracy"),
     }
     overview["top_complaint"] = ({k: overview["top_complaint"][k] for k in ("theme_id", "name", "negative_count", "size", "negative_pct")}
                                  if overview["top_complaint"] else None)
@@ -426,11 +455,13 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
         "ingestion_duplicates_removed": clean_rep.ingestion_duplicates_removed,
         "identical_text_rows_kept": clean_rep.identical_text_rows_kept,
         "missing_timestamps": ts_missing,
+        "dates_available": dates_available,
+        "dates_message": date_msg,
         "mojibake_repaired": clean_rep.mojibake_repaired,
         "html_entities_decoded": clean_rep.html_entities_decoded,
         "pii_redactions": clean_rep.pii_redactions,
         "rows_with_pii": clean_rep.rows_with_pii,
-        "drift": {k: {"value": v["value"], "status": v["status"]} for k, v in drift["current_vs_previous"]["metrics"].items()},
+        "drift": drift_metrics,
         "theme_stats": tres.stats,
     }
     hw = detect_hardware().to_dict()
@@ -439,70 +470,9 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
             "sentiment_reviews_per_sec": round(n / out.seconds, 1),
             "peak_gpu_mem_gb": round(torch.cuda.max_memory_allocated() / 1024**3, 3) if device == "cuda" else None,
             "embedding": emb_info}
-    # sentiment_validation is THIS batch only (served by GET /sentiment/validation)
-    sent_val = batch_metrics.get("sentiment")
-    if sent_val:
-        # shape compatible with the dashboard: expose three_class as the headline metrics block
-        sent_val = {
-            **sent_val,
-            "metrics": {
-                **sent_val["metrics"],
-                # aliases so older UI keys still resolve where possible
-                "three_class": sent_val["metrics"]["three_class"],
-                "binary_forced": sent_val["metrics"].get("binary_non_neutral_truth") or {
-                    "n": 0, "accuracy": None, "macro_f1": None,
-                    "negative": {"precision": 0, "recall": 0, "f1": 0, "support": 0},
-                    "positive": {"precision": 0, "recall": 0, "f1": 0, "support": 0},
-                },
-                "strict_3class": {
-                    "n": sent_val["metrics"]["three_class"]["n"],
-                    "accuracy": sent_val["metrics"]["three_class"]["accuracy"],
-                    "macro_f1": sent_val["metrics"]["three_class"]["macro_f1"],
-                    "negative": sent_val["metrics"]["three_class"]["per_class"]["negative"],
-                    "positive": sent_val["metrics"]["three_class"]["per_class"]["positive"],
-                },
-                "abstain": {
-                    **{k: sent_val["metrics"]["three_class"]["per_class"][k] for k in ()},
-                    "n": sent_val["metrics"]["three_class"]["n"],
-                    "accuracy": sent_val["metrics"]["three_class"]["accuracy"],
-                    "macro_f1": sent_val["metrics"]["three_class"]["macro_f1"],
-                    "negative": sent_val["metrics"]["three_class"]["per_class"]["negative"],
-                    "positive": sent_val["metrics"]["three_class"]["per_class"]["positive"],
-                    "coverage": 1.0,
-                },
-                "neutral_prediction_rate": round(
-                    float(sum(1 for r in cleaned if r["sentiment"] == "neutral") / max(1, len(cleaned))), 4),
-                "confusion_true2_pred3": {
-                    "negative": {
-                        "negative": sent_val["metrics"]["three_class"]["confusion"]["negative"]["negative"],
-                        "neutral": sent_val["metrics"]["three_class"]["confusion"]["negative"]["neutral"],
-                        "positive": sent_val["metrics"]["three_class"]["confusion"]["negative"]["positive"],
-                    },
-                    "positive": {
-                        "negative": sent_val["metrics"]["three_class"]["confusion"]["positive"]["negative"],
-                        "neutral": sent_val["metrics"]["three_class"]["confusion"]["positive"]["neutral"],
-                        "positive": sent_val["metrics"]["three_class"]["confusion"]["positive"]["positive"],
-                    },
-                },
-                "macro_recall": sent_val["metrics"]["headline_macro_recall"],
-                "per_class": sent_val["metrics"]["three_class"]["per_class"],
-                "confusion_3x3": sent_val["metrics"]["three_class"]["confusion"],
-            },
-            "batch_evaluation": {
-                "themes": batch_metrics.get("themes"),
-                "radar": batch_metrics.get("radar"),
-                "pii": batch_metrics.get("pii"),
-                "overall_recall": batch_metrics.get("overall_recall"),
-            },
-            "accuracy_study": None,
-            "synthetic_3class": sent_val["metrics"]["three_class"] if dataset_info["kind"] == "synthetic" else None,
-        }
     reports = {"overview": overview, "data_health": data_health, "drift": drift, "traceability": trace, "performance": perf,
                "radar_meta": {k: v for k, v in radar.items() if k != "items"}, "hardware": hw,
                "batch_evaluation": batch_metrics}
-    if sent_val:
-        reports["sentiment_validation"] = sent_val
-    # optional offline verification summary (no tweet corpus)
     for key, fname in (("pii_audit", "pii_audit.json"), ("model_verification", "model_verification.json")):
         f = config.ARTIFACTS_DIR / "reports" / fname
         if f.exists():
@@ -512,19 +482,19 @@ def run(source: str = "synthetic", limit: int | None = None, db_path: Path | Non
     if "model_verification" in reports:
         for m in reports["model_verification"].get("models", {}).values():
             m.pop("traceback", None)
-    # strip ground-truth columns before DB write (labels were for scoring only; not served)
     for r in cleaned:
         r.pop("gt_theme", None)
         r.pop("gt_pii", None)
-        r.pop("gt_sentiment", None)  # labels used for this-DB scoring only; never served
+        r.pop("gt_sentiment", None)
+    sent_name = out.model
     models = {
-        config.SENTIMENT_MODEL: {"revision": sent_rev, "device": device, "purpose": "sentiment", "batch_size": 64,
-                                 "dtype": "float16" if device == "cuda" else "float32"},
+        sent_name: {"revision": sent_rev, "device": device, "purpose": "sentiment", "batch_size": 64,
+                    "dtype": "float16" if device == "cuda" else "float32"},
         config.EMBEDDING_MODEL: {"revision": emb_info.get("revision"), "device": device, "purpose": "embeddings / themes", "dim": 384},
     }
     meta = {"generated_at_utc": datetime.now(timezone.utc).isoformat(), "source": dataset_info["kind"], "dataset": dataset_info,
-            "seed": config.SEED, "theme_params": tres.stats["params"], "radar_params": radar["params"],
-            "limit": limit, "schema_version": 1}
+            "seed": config.SEED, "theme_params": tres.stats["params"], "radar_params": radar.get("params") or {},
+            "limit": limit, "schema_version": 2, "dates_available": dates_available, "dates_message": date_msg}
     target = db_path or config.ANALYTICS_DB
     timer.run("write_db", write_db, target, meta, cleaned, themes, radar, reports, models)
     print(f"Wrote {target}  reviews={n} themes={len(themes)} traceability={trace['status']} total={perf['total_seconds']}s")

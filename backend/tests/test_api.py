@@ -47,7 +47,7 @@ def assert_no_pii(payload):
         assert not scan(s), (scan(s), s[:200])
 
 
-GET_ENDPOINTS = ["/health", "/metrics", "/themes", "/issues", "/reviews", "/sentiment/validation", "/drift", "/data-health", "/model-info"]
+GET_ENDPOINTS = ["/health", "/metrics", "/themes", "/issues", "/reviews", "/drift", "/data-health", "/model-info", "/batches"]
 
 
 @pytest.mark.parametrize("path", GET_ENDPOINTS)
@@ -55,6 +55,18 @@ def test_get_endpoints_ok_and_pii_free(client, path):
     r = client.get(path)
     assert r.status_code == 200, r.text
     assert_no_pii(r.json())
+
+
+def test_model_evaluation_global_or_missing(client):
+    r = client.get("/model/evaluation")
+    if r.status_code == 404:
+        assert "finetune_amazon_sentiment" in r.json().get("detail", "")
+        return
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("scope") == "global_model_evaluation"
+    assert "headline_accuracy" in (body.get("metrics") or {})
+    assert_no_pii(body)
 
 
 def test_health_reports_real_data(client):

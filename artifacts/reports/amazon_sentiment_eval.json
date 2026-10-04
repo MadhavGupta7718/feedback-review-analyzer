@@ -1,0 +1,211 @@
+{
+  "evaluation_date_utc": "2026-10-04T16:05:53.324758+00:00",
+  "dataset": "Amazon clothing reviews (Review + Cons_rating)",
+  "source_csv": "D:\\Microsoft\\feedback-review-analyzer\\data\\interim\\amazon_clothing\\reviews.csv",
+  "model_base": "cardiffnlp/twitter-roberta-base-sentiment-latest",
+  "model_dir": "D:\\Microsoft\\feedback-review-analyzer\\artifacts\\models\\amazon_roberta_sentiment",
+  "split": {
+    "train": 38661,
+    "val": 4830,
+    "test": 4812,
+    "method": "sha256(text)%100 \u2192 80/10/10"
+  },
+  "label_mapping": "1-2 negative, 3 neutral, 4-5 positive (Cons_rating)",
+  "hyperparams": {
+    "lr": 2e-05,
+    "batch_size": 16,
+    "epochs": 3,
+    "max_length": 128,
+    "seed": 42,
+    "class_weights": [
+      1.1740431785583496,
+      1.5922108888626099,
+      0.23374596238136292
+    ],
+    "weight_power": 1.0,
+    "neu_boost": 1.0,
+    "neg_boost": 1.0,
+    "balanced_batches": false,
+    "focal_gamma": 0.0,
+    "oversample_neu": 1,
+    "oversample_neg": 1,
+    "balanced_softmax_tau": 0.0,
+    "resume": false
+  },
+  "device": "cuda",
+  "training_seconds": 2273.7,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.6425,
+      "val_accuracy": 0.8292,
+      "val_macro_recall": 0.725,
+      "val_per_class_recall": {
+        "negative": 0.7874,
+        "neutral": 0.4991,
+        "positive": 0.8886
+      },
+      "elapsed_s": 768.9
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.5139,
+      "val_accuracy": 0.8358,
+      "val_macro_recall": 0.747,
+      "val_per_class_recall": {
+        "negative": 0.7275,
+        "neutral": 0.6234,
+        "positive": 0.89
+      },
+      "elapsed_s": 1505.8
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.4069,
+      "val_accuracy": 0.8395,
+      "val_macro_recall": 0.7339,
+      "val_per_class_recall": {
+        "negative": 0.729,
+        "neutral": 0.5694,
+        "positive": 0.9032
+      },
+      "elapsed_s": 2241.7
+    }
+  ],
+  "previous_headline": {
+    "accuracy": 0.8092,
+    "macro_recall": 0.7366,
+    "evaluation_date_utc": "2026-10-04T14:46:30.563150+00:00"
+  },
+  "best_val_macro_recall": 0.747,
+  "metrics": {
+    "val": {
+      "n": 4830,
+      "accuracy": 0.8358,
+      "per_class": {
+        "negative": {
+          "precision": 0.7083,
+          "recall": 0.7275,
+          "f1": 0.7178,
+          "support": 701
+        },
+        "neutral": {
+          "precision": 0.4066,
+          "recall": 0.6234,
+          "f1": 0.4922,
+          "support": 555
+        },
+        "positive": {
+          "precision": 0.9761,
+          "recall": 0.89,
+          "f1": 0.9311,
+          "support": 3574
+        }
+      },
+      "macro_f1": 0.7137,
+      "confusion": {
+        "negative": {
+          "negative": 510,
+          "neutral": 175,
+          "positive": 16
+        },
+        "neutral": {
+          "negative": 147,
+          "neutral": 346,
+          "positive": 62
+        },
+        "positive": {
+          "negative": 63,
+          "neutral": 330,
+          "positive": 3181
+        }
+      },
+      "macro_recall": 0.747
+    },
+    "test": {
+      "n": 4812,
+      "accuracy": 0.8315,
+      "per_class": {
+        "negative": {
+          "precision": 0.6969,
+          "recall": 0.7225,
+          "f1": 0.7094,
+          "support": 681
+        },
+        "neutral": {
+          "precision": 0.3867,
+          "recall": 0.6,
+          "f1": 0.4703,
+          "support": 535
+        },
+        "positive": {
+          "precision": 0.9731,
+          "recall": 0.8865,
+          "f1": 0.9278,
+          "support": 3596
+        }
+      },
+      "macro_f1": 0.7025,
+      "confusion": {
+        "negative": {
+          "negative": 492,
+          "neutral": 169,
+          "positive": 20
+        },
+        "neutral": {
+          "negative": 146,
+          "neutral": 321,
+          "positive": 68
+        },
+        "positive": {
+          "negative": 68,
+          "neutral": 340,
+          "positive": 3188
+        }
+      },
+      "macro_recall": 0.7363
+    },
+    "headline_accuracy": 0.8315,
+    "headline_macro_recall": 0.7363,
+    "per_class": {
+      "negative": {
+        "precision": 0.6969,
+        "recall": 0.7225,
+        "f1": 0.7094,
+        "support": 681
+      },
+      "neutral": {
+        "precision": 0.3867,
+        "recall": 0.6,
+        "f1": 0.4703,
+        "support": 535
+      },
+      "positive": {
+        "precision": 0.9731,
+        "recall": 0.8865,
+        "f1": 0.9278,
+        "support": 3596
+      }
+    },
+    "confusion_3x3": {
+      "negative": {
+        "negative": 492,
+        "neutral": 169,
+        "positive": 20
+      },
+      "neutral": {
+        "negative": 146,
+        "neutral": 321,
+        "positive": 68
+      },
+      "positive": {
+        "negative": 68,
+        "neutral": 340,
+        "positive": 3188
+      }
+    }
+  },
+  "ground_truth_note": "Labels from Cons_rating star ratings (weak labels). Metrics are on the held-out TEST split only.",
+  "methodology": "3-class fine-tune of RoBERTa on Amazon clothing reviews with recall-focused training (class-balanced batches, minority-boosted weights, focal loss). 80/10/10 deterministic text-hash split with no train/test overlap. Macro recall = mean of per-class recall on TEST.",
+  "scope": "global model evaluation \u2014 not per uploaded batch"
+}
