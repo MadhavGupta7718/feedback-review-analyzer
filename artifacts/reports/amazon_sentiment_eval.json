@@ -1,7 +1,7 @@
 {
-  "evaluation_date_utc": "2026-10-04T16:05:53.324758+00:00",
-  "dataset": "Amazon clothing reviews (Review + Cons_rating)",
-  "source_csv": "D:\\Microsoft\\feedback-review-analyzer\\data\\interim\\amazon_clothing\\reviews.csv",
+  "evaluation_date_utc": "2026-10-05T10:46:39.008635+00:00",
+  "dataset": "Amazon clothing reviews (teacher-labeled)",
+  "source_csv": "data\\interim\\amazon_clothing\\reviews_teacher_roberta.csv",
   "model_base": "cardiffnlp/twitter-roberta-base-sentiment-latest",
   "model_dir": "D:\\Microsoft\\feedback-review-analyzer\\artifacts\\models\\amazon_roberta_sentiment",
   "split": {
@@ -10,7 +10,7 @@
     "test": 4812,
     "method": "sha256(text)%100 \u2192 80/10/10"
   },
-  "label_mapping": "1-2 negative, 3 neutral, 4-5 positive (Cons_rating)",
+  "label_mapping": "Teacher RoBERTa (cardiffnlp) text-only labels; stars ignored for training",
   "hyperparams": {
     "lr": 2e-05,
     "batch_size": 16,
@@ -18,9 +18,9 @@
     "max_length": 128,
     "seed": 42,
     "class_weights": [
-      1.1740431785583496,
-      1.5922108888626099,
-      0.23374596238136292
+      1.021349549293518,
+      1.7269816398620605,
+      0.2516688108444214
     ],
     "weight_power": 1.0,
     "neu_boost": 1.0,
@@ -33,179 +33,179 @@
     "resume": false
   },
   "device": "cuda",
-  "training_seconds": 2273.7,
+  "training_seconds": 2294.2,
   "history": [
     {
       "epoch": 1,
-      "train_loss": 0.6425,
-      "val_accuracy": 0.8292,
-      "val_macro_recall": 0.725,
+      "train_loss": 0.3619,
+      "val_accuracy": 0.9267,
+      "val_macro_recall": 0.8497,
       "val_per_class_recall": {
-        "negative": 0.7874,
-        "neutral": 0.4991,
-        "positive": 0.8886
+        "negative": 0.9475,
+        "neutral": 0.6352,
+        "positive": 0.9664
       },
-      "elapsed_s": 768.9
+      "elapsed_s": 729.8
     },
     {
       "epoch": 2,
-      "train_loss": 0.5139,
-      "val_accuracy": 0.8358,
-      "val_macro_recall": 0.747,
+      "train_loss": 0.2672,
+      "val_accuracy": 0.9406,
+      "val_macro_recall": 0.8827,
       "val_per_class_recall": {
-        "negative": 0.7275,
-        "neutral": 0.6234,
-        "positive": 0.89
+        "negative": 0.8974,
+        "neutral": 0.7732,
+        "positive": 0.9775
       },
-      "elapsed_s": 1505.8
+      "elapsed_s": 1499.8
     },
     {
       "epoch": 3,
-      "train_loss": 0.4069,
-      "val_accuracy": 0.8395,
-      "val_macro_recall": 0.7339,
+      "train_loss": 0.1441,
+      "val_accuracy": 0.9437,
+      "val_macro_recall": 0.8827,
       "val_per_class_recall": {
-        "negative": 0.729,
-        "neutral": 0.5694,
-        "positive": 0.9032
+        "negative": 0.9498,
+        "neutral": 0.7221,
+        "positive": 0.9763
       },
-      "elapsed_s": 2241.7
+      "elapsed_s": 2268.5
     }
   ],
   "previous_headline": {
-    "accuracy": 0.8092,
-    "macro_recall": 0.7366,
-    "evaluation_date_utc": "2026-10-04T14:46:30.563150+00:00"
+    "accuracy": 0.8315,
+    "macro_recall": 0.7363,
+    "evaluation_date_utc": "2026-10-04T16:05:53.324758+00:00"
   },
-  "best_val_macro_recall": 0.747,
+  "best_val_macro_recall": 0.8827,
   "metrics": {
     "val": {
       "n": 4830,
-      "accuracy": 0.8358,
+      "accuracy": 0.9406,
       "per_class": {
         "negative": {
-          "precision": 0.7083,
-          "recall": 0.7275,
-          "f1": 0.7178,
-          "support": 701
+          "precision": 0.9119,
+          "recall": 0.8974,
+          "f1": 0.9046,
+          "support": 877
         },
         "neutral": {
-          "precision": 0.4066,
-          "recall": 0.6234,
-          "f1": 0.4922,
-          "support": 555
+          "precision": 0.7896,
+          "recall": 0.7732,
+          "f1": 0.7813,
+          "support": 529
         },
         "positive": {
-          "precision": 0.9761,
-          "recall": 0.89,
-          "f1": 0.9311,
-          "support": 3574
+          "precision": 0.9704,
+          "recall": 0.9775,
+          "f1": 0.974,
+          "support": 3424
         }
       },
-      "macro_f1": 0.7137,
+      "macro_f1": 0.8866,
       "confusion": {
         "negative": {
-          "negative": 510,
-          "neutral": 175,
-          "positive": 16
+          "negative": 787,
+          "neutral": 57,
+          "positive": 33
         },
         "neutral": {
-          "negative": 147,
-          "neutral": 346,
-          "positive": 62
+          "negative": 51,
+          "neutral": 409,
+          "positive": 69
         },
         "positive": {
-          "negative": 63,
-          "neutral": 330,
-          "positive": 3181
+          "negative": 25,
+          "neutral": 52,
+          "positive": 3347
         }
       },
-      "macro_recall": 0.747
+      "macro_recall": 0.8827
     },
     "test": {
       "n": 4812,
-      "accuracy": 0.8315,
+      "accuracy": 0.9485,
       "per_class": {
         "negative": {
-          "precision": 0.6969,
-          "recall": 0.7225,
-          "f1": 0.7094,
-          "support": 681
+          "precision": 0.9244,
+          "recall": 0.9047,
+          "f1": 0.9144,
+          "support": 892
         },
         "neutral": {
-          "precision": 0.3867,
-          "recall": 0.6,
-          "f1": 0.4703,
-          "support": 535
+          "precision": 0.7926,
+          "recall": 0.8182,
+          "f1": 0.8052,
+          "support": 495
         },
         "positive": {
-          "precision": 0.9731,
-          "recall": 0.8865,
-          "f1": 0.9278,
-          "support": 3596
+          "precision": 0.9778,
+          "recall": 0.9787,
+          "f1": 0.9783,
+          "support": 3425
         }
       },
-      "macro_f1": 0.7025,
+      "macro_f1": 0.8993,
       "confusion": {
         "negative": {
-          "negative": 492,
-          "neutral": 169,
-          "positive": 20
+          "negative": 807,
+          "neutral": 59,
+          "positive": 26
         },
         "neutral": {
-          "negative": 146,
-          "neutral": 321,
-          "positive": 68
+          "negative": 40,
+          "neutral": 405,
+          "positive": 50
         },
         "positive": {
-          "negative": 68,
-          "neutral": 340,
-          "positive": 3188
+          "negative": 26,
+          "neutral": 47,
+          "positive": 3352
         }
       },
-      "macro_recall": 0.7363
+      "macro_recall": 0.9005
     },
-    "headline_accuracy": 0.8315,
-    "headline_macro_recall": 0.7363,
+    "headline_accuracy": 0.9485,
+    "headline_macro_recall": 0.9005,
     "per_class": {
       "negative": {
-        "precision": 0.6969,
-        "recall": 0.7225,
-        "f1": 0.7094,
-        "support": 681
+        "precision": 0.9244,
+        "recall": 0.9047,
+        "f1": 0.9144,
+        "support": 892
       },
       "neutral": {
-        "precision": 0.3867,
-        "recall": 0.6,
-        "f1": 0.4703,
-        "support": 535
+        "precision": 0.7926,
+        "recall": 0.8182,
+        "f1": 0.8052,
+        "support": 495
       },
       "positive": {
-        "precision": 0.9731,
-        "recall": 0.8865,
-        "f1": 0.9278,
-        "support": 3596
+        "precision": 0.9778,
+        "recall": 0.9787,
+        "f1": 0.9783,
+        "support": 3425
       }
     },
     "confusion_3x3": {
       "negative": {
-        "negative": 492,
-        "neutral": 169,
-        "positive": 20
+        "negative": 807,
+        "neutral": 59,
+        "positive": 26
       },
       "neutral": {
-        "negative": 146,
-        "neutral": 321,
-        "positive": 68
+        "negative": 40,
+        "neutral": 405,
+        "positive": 50
       },
       "positive": {
-        "negative": 68,
-        "neutral": 340,
-        "positive": 3188
+        "negative": 26,
+        "neutral": 47,
+        "positive": 3352
       }
     }
   },
-  "ground_truth_note": "Labels from Cons_rating star ratings (weak labels). Metrics are on the held-out TEST split only.",
-  "methodology": "3-class fine-tune of RoBERTa on Amazon clothing reviews with recall-focused training (class-balanced batches, minority-boosted weights, focal loss). 80/10/10 deterministic text-hash split with no train/test overlap. Macro recall = mean of per-class recall on TEST.",
+  "ground_truth_note": "Labels from CardiffNLP RoBERTa teacher on review text only (stars ignored). TEST metrics measure agreement with the teacher, not human gold labels.",
+  "methodology": "Teacher-label path: cardiffnlp/twitter-roberta-base-sentiment-latest labeled all Amazon clothing reviews from text only; student RoBERTa fine-tuned on those labels with inverse-frequency CE. 80/10/10 deterministic text-hash split. Macro recall = mean of per-class recall on TEST (vs teacher labels).",
   "scope": "global model evaluation \u2014 not per uploaded batch"
 }

@@ -82,7 +82,8 @@ def build() -> list[Path]:
         "Embeddings — MiniLM 384-d vectors (cached on disk by content hash).",
         "Themes — PCA + HDBSCAN clustering, merge micro-clusters, name themes, pick representatives.",
         "Complaint Radar — compare last 14 days vs previous 14 days per theme; assign status + priority.",
-        "Drift — sentiment/theme PSI, volume change, review-length KS; weekly series.",
+        "Drift — sentiment/theme PSI, volume change, review-length KS; weekly series "
+        "(see §4.4 Drift formulas). Stubbed when dates_available is false.",
         "Traceability audit — every evidence ID must exist, match theme, and (for radar) be negative.",
         "Batch evaluation — sentiment / theme / radar / PII recall for THIS batch only → reports table.",
         "Write DB — reviews (redacted only), themes, issues, reports JSON blobs, model_versions, meta.",
@@ -114,28 +115,127 @@ def build() -> list[Path]:
         "Logs use a redacting filter.",
     ])
 
-    h2(doc, "4.3 Complaint Radar rules (general, not dataset-specific)")
+    h2(doc, "4.3 Complaint Radar formulas (ml/complaints/radar.py)")
+    p(doc, "Windows (default window_days = 14), ending at the latest review timestamp:")
+    code(doc,
+         "current  = (end - 14d, end]\n"
+         "previous = (end - 28d, end - 14d]")
+    p(doc, "Core quantities:")
+    code(doc,
+         "growth_pct     = (current - previous) / previous * 100     # None if previous == 0\n"
+         "negative_ratio = (# negative reviews of theme in current) / (# theme reviews in current)\n"
+         "acceleration_pp = ((c-b)/b - (b-a)/a) * 100               # last three weekly buckets a,b,c")
+    p(doc, "Weekly trend: linear regression slope on weekly counts; relative = slope / mean(counts). "
+           "rising if rel > 0.05, falling if rel < -0.05, else stable.")
+    p(doc, "Min current mentions scales with batch size:")
+    code(doc,
+         "if n_reviews >= 5000: min_mentions = 30\n"
+         "else: min_mentions = clamp(round(n_reviews * 0.015), floor=8, ceil=30)")
+    p(doc, "Status rules (evaluated in order):")
     bullets(doc, [
-        "Windows: current = last window_days (default 14); previous = the 14 days before that.",
-        "NEW — previous==0 and current ≥ effective min mentions.",
-        "EMERGING — growth_pct ≥ +50%.",
-        "DECLINING — growth_pct ≤ −25%, OR growth ≤ −15% with a falling multi-week trend (soft decline).",
-        "STABLE — otherwise (after complaint / evidence gates).",
-        "NOT_A_COMPLAINT — negative ratio below 50%.",
-        "INSUFFICIENT_EVIDENCE — too few current mentions or negative evidence rows, or batch shorter than two windows.",
-        "Min mentions scale down on small CSVs (<5000 rows) so tiny uploads are not stuck forever.",
-        "Priority = current_negative_mentions × (1 + clip(growth/100, 0, 3)); NEW uses ×4.",
+        "NO_DATA — current == 0 and previous == 0",
+        "NOT_A_COMPLAINT — negative_ratio < 0.50 (current, or whole batch if current empty)",
+        "INSUFFICIENT_EVIDENCE — current < min_mentions, or negative evidence reviews < 3",
+        "NEW — previous == 0 and current >= min_mentions",
+        "EMERGING — growth_pct >= 50",
+        "DECLINING — growth_pct <= -25, OR (growth_pct <= -15 AND weekly trend is falling AND previous >= min_mentions)",
+        "STABLE — otherwise",
+    ])
+    p(doc, "Priority (sort key only; does not decide status), max_growth_bonus = 3:")
+    code(doc,
+         "growth_factor = 1 + clip(growth_pct / 100, 0, 3)     # NEW: growth_factor = 1 + 3 = 4\n"
+         "priority      = current_negative_mentions * growth_factor")
+    p(doc, "Segment association lift (app_version / platform), association not causation:")
+    code(doc,
+         "theme_share   = count(segment=v in theme current) / count(theme current with segment)\n"
+         "overall_share = count(segment=v in all current) / count(all current with segment)\n"
+         "lift          = theme_share / overall_share\n"
+         "# keep if support >= 20 and lift >= 1.3")
+
+    h2(doc, "4.4 Drift formulas (ml/drift/monitor.py)")
+    p(doc,
+      "Drift compares a reference window vs a current window (usually two consecutive 14-day periods "
+      "from the batch’s own timestamps). Implementation: ml/drift/monitor.py. Served by GET /drift. "
+      "When the upload has no usable dates, the pipeline writes a stub with status unavailable.")
+    p(doc, "Four metrics are computed; overall_status is the worst of the four (none < moderate < significant).")
+
+    h3(doc, "Sentiment and theme mix — Population Stability Index (PSI)")
+    p(doc,
+      "Convert each window to category shares (sentiment: negative / neutral / positive; themes: theme_id "
+      "plus unassigned). Clip each share with epsilon ε = 1e-4, renormalize, then:")
+    code(doc, "PSI = sum_i (p_cur_i - p_ref_i) * ln(p_cur_i / p_ref_i)")
+    p(doc,
+      "Jensen–Shannon distance (base 2) is also stored as a bounded [0, 1] companion (js_distance).")
+    table(doc, ["PSI value", "Status"], [
+        ["< 0.10", "none"],
+        ["0.10 – 0.25", "moderate"],
+        [">= 0.25", "significant"],
     ])
 
-    h2(doc, "4.4 Per-DB evaluation (batch_eval)")
-    p(doc, "Stored under reports keys sentiment_validation and batch_evaluation:")
-    table(doc, ["Score", "When available", "Meaning"], [
-        ["Sentiment 3-class accuracy + macro recall", "gt_sentiment or star ratings", "Argmax vs labels; macro = mean of neg/neu/pos recall"],
-        ["Theme recall", "gt_theme planted", "Share of planted themes recovered by clustering"],
-        ["Radar recall", "gt_theme + planted temporal keys", "Expected NEW/EMERGING/DECLINING/… patterns"],
-        ["PII recall", "gt_pii planted", "Planted rows that received ≥1 redaction"],
-        ["Mean available recalls", "any of the above", "Average of scores this batch can compute"],
+    h3(doc, "Volume — relative change in reviews per day")
+    code(doc,
+         "r = (#reviews) / (#days)\n"
+         "change = (r_cur - r_ref) / r_ref")
+    table(doc, ["|change|", "Status"], [
+        ["< 20%", "none"],
+        ["20% – 50%", "moderate"],
+        [">= 50%", "significant"],
     ])
+
+    h3(doc, "Review length — Kolmogorov–Smirnov (KS)")
+    p(doc,
+      "Two-sample KS test on character lengths of text_redacted. Uses statistic D and p-value "
+      "(scipy.stats.ks_2samp). Status:")
+    bullets(doc, [
+        "none — if p >= 0.01, or D < 0.10",
+        "moderate — if p < 0.01 and 0.10 <= D < 0.20",
+        "significant — if p < 0.01 and D >= 0.20",
+        "insufficient_data — fewer than 2 lengths in either window",
+    ])
+    p(doc, "Default thresholds (DriftThresholds): psi_moderate=0.10, psi_significant=0.25, "
+           "volume_moderate=0.20, volume_significant=0.50, ks_moderate=0.10, ks_significant=0.20, ks_alpha=0.01.")
+
+    h2(doc, "4.5 Sentiment scoring formulas (ml/sentiment/model.py, ml/evaluation/metrics.py)")
+    p(doc, "Inference (product path): 3-class RoBERTa logits → softmax probabilities over {negative, neutral, positive}.")
+    code(doc,
+         "p_c = softmax(logits)_c\n"
+         "label = argmax_c p_c\n"
+         "confidence = max_c p_c")
+    p(doc, "Held-out / labelled evaluation (Model Validation uses Amazon TEST):")
+    code(doc,
+         "precision_c = TP_c / (TP_c + FP_c)\n"
+         "recall_c    = TP_c / (TP_c + FN_c)\n"
+         "F1_c        = 2 * precision_c * recall_c / (precision_c + recall_c)\n"
+         "accuracy    = (# correct labels) / N\n"
+         "macro_recall = (recall_neg + recall_neu + recall_pos) / 3\n"
+         "macro_f1     = (F1_neg + F1_neu + F1_pos) / 3")
+    p(doc, "Amazon fine-tune class weights (inverse frequency, then optional boosts):")
+    code(doc,
+         "w_c = (N / (3 * count_c)) ** weight_power\n"
+         "w_neu *= neu_boost;  w_neg *= neg_boost\n"
+         "w = w / mean(w)     # keep mean ~1 for stable LR")
+    p(doc, "Selected production train uses weight_power=1, neu_boost=1, neg_boost=1 (plain inverse-frequency CE).")
+
+    h2(doc, "4.6 Theme formulas (ml/themes/discovery.py)")
+    bullets(doc, [
+        "Embeddings: MiniLM 384-d L2-normalised vectors.",
+        "Clustering: PCA → HDBSCAN micro-clusters → average-linkage merge of centroids when cosine similarity ≥ merge_threshold.",
+        "Assignment: cluster member, or nearest_centroid if cosine similarity high enough, else unassigned.",
+    ])
+    code(doc,
+         "centroid_k = normalize(mean(embeddings of members_k))\n"
+         "similarity(review, theme) = cosine(embedding, centroid) = embedding · centroid\n"
+         "coherence(theme) = mean(cosine(member_i, centroid)) over members")
+    p(doc, "Theme negative_pct on the dashboard = 100 * negative_count / size.")
+
+    h2(doc, "4.7 Evaluation bundle formulas (batch_eval / global Model Validation)")
+    p(doc, "Product accuracy page uses global Amazon holdout metrics (artifacts/reports/amazon_sentiment_eval.json). "
+           "Optional per-batch planted/star scores may still be computed offline but are not the product accuracy UI.")
+    code(doc,
+         "theme_recall   = (# planted themes recovered) / (# planted themes)\n"
+         "radar_recall   = (# expected radar patterns matched) / (# expected patterns)\n"
+         "pii_recall     = (# planted-PII rows with ≥1 redaction) / (# planted-PII rows)\n"
+         "mean_available = mean of whichever of {sentiment_macro_recall, theme_recall, radar_recall, pii_recall} exist")
 
     h1(doc, "5. Analytics SQLite schema (conceptual)")
     table(doc, ["Table", "Contents"], [

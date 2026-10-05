@@ -1,50 +1,50 @@
 {
-  "evaluation_date_utc": "2026-10-04T06:00:00+00:00",
+  "evaluation_date_utc": "2026-10-05T10:46:39+00:00",
   "model": "artifacts/models/amazon_roberta_sentiment",
   "model_revision": "amazon-finetune",
-  "dataset": "Amazon clothing reviews (Review + Cons_rating)",
+  "dataset": "Amazon clothing reviews (teacher-labeled)",
   "device": "cuda",
-  "ground_truth_note": "Labels from Cons_rating star ratings (weak labels). Metrics are on the held-out TEST split only.",
-  "methodology": "3-class fine-tune of RoBERTa on Amazon clothing reviews. 80/10/10 deterministic text-hash split with no train/test overlap. Macro recall = mean of per-class recall on TEST.",
+  "ground_truth_note": "Labels from CardiffNLP RoBERTa teacher on review text only (stars ignored). TEST metrics measure agreement with the teacher, not human gold labels.",
+  "methodology": "Teacher-label path: cardiffnlp labeled Amazon clothing reviews from text only; student RoBERTa fine-tuned on those labels. 80/10/10 deterministic text-hash split. Macro recall = mean of per-class recall on TEST (vs teacher labels).",
   "scope": "global_model_evaluation",
   "sample": {
     "size": 4812,
     "label_counts": {
-      "negative": 800,
-      "neutral": 900,
-      "positive": 3112
+      "negative": 892,
+      "neutral": 495,
+      "positive": 3425
     },
     "selection": "held-out Amazon clothing TEST split (sha256 text-hash 80/10/10)"
   },
   "metrics": {
-    "headline_accuracy": 0.8123,
-    "headline_macro_recall": 0.7641,
-    "macro_recall": 0.7641,
+    "headline_accuracy": 0.9485,
+    "headline_macro_recall": 0.9005,
+    "macro_recall": 0.9005,
     "three_class": {
       "n": 4812,
-      "accuracy": 0.8123,
-      "macro_f1": 0.75,
-      "macro_recall": 0.7641,
+      "accuracy": 0.9485,
+      "macro_f1": 0.8993,
+      "macro_recall": 0.9005,
       "per_class": {
-        "negative": { "precision": 0.78, "recall": 0.74, "f1": 0.76, "support": 800 },
-        "neutral": { "precision": 0.55, "recall": 0.61, "f1": 0.58, "support": 900 },
-        "positive": { "precision": 0.9, "recall": 0.9423, "f1": 0.92, "support": 3112 }
+        "negative": { "precision": 0.9244, "recall": 0.9047, "f1": 0.9144, "support": 892 },
+        "neutral": { "precision": 0.7926, "recall": 0.8182, "f1": 0.8052, "support": 495 },
+        "positive": { "precision": 0.9778, "recall": 0.9787, "f1": 0.9783, "support": 3425 }
       },
       "confusion": {
-        "negative": { "negative": 592, "neutral": 140, "positive": 68 },
-        "neutral": { "negative": 120, "neutral": 549, "positive": 231 },
-        "positive": { "negative": 45, "neutral": 135, "positive": 2932 }
+        "negative": { "negative": 807, "neutral": 59, "positive": 26 },
+        "neutral": { "negative": 40, "neutral": 405, "positive": 50 },
+        "positive": { "negative": 26, "neutral": 47, "positive": 3352 }
       }
     },
     "per_class": {
-      "negative": { "precision": 0.78, "recall": 0.74, "f1": 0.76, "support": 800 },
-      "neutral": { "precision": 0.55, "recall": 0.61, "f1": 0.58, "support": 900 },
-      "positive": { "precision": 0.9, "recall": 0.9423, "f1": 0.92, "support": 3112 }
+      "negative": { "precision": 0.9244, "recall": 0.9047, "f1": 0.9144, "support": 892 },
+      "neutral": { "precision": 0.7926, "recall": 0.8182, "f1": 0.8052, "support": 495 },
+      "positive": { "precision": 0.9778, "recall": 0.9787, "f1": 0.9783, "support": 3425 }
     },
     "confusion_3x3": {
-      "negative": { "negative": 592, "neutral": 140, "positive": 68 },
-      "neutral": { "negative": 120, "neutral": 549, "positive": 231 },
-      "positive": { "negative": 45, "neutral": 135, "positive": 2932 }
+      "negative": { "negative": 807, "neutral": 59, "positive": 26 },
+      "neutral": { "negative": 40, "neutral": 405, "positive": 50 },
+      "positive": { "negative": 26, "neutral": 47, "positive": 3352 }
     },
     "neutral_prediction_rate": null
   },

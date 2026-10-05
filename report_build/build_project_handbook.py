@@ -186,6 +186,48 @@ def build() -> list[Path]:
     ])
     p(doc, "Uploads do not write a planted-label sentiment_validation payload for the accuracy page.")
 
+    h2(doc, "7.1 Formulas used in this project")
+    p(doc, "Sentiment inference:")
+    code(doc,
+         "p_c = softmax(logits)_c\n"
+         "label = argmax_c p_c\n"
+         "confidence = max_c p_c")
+    p(doc, "Held-out evaluation (Model Validation / Amazon TEST):")
+    code(doc,
+         "precision_c = TP_c / (TP_c + FP_c)\n"
+         "recall_c    = TP_c / (TP_c + FN_c)\n"
+         "F1_c        = 2 * precision_c * recall_c / (precision_c + recall_c)\n"
+         "accuracy    = (# correct) / N\n"
+         "macro_recall = (recall_neg + recall_neu + recall_pos) / 3")
+    p(doc, "Class weights (fine-tune CE); selected train uses weight_power=1:")
+    code(doc,
+         "w_c = (N / (3 * count_c)) ** weight_power\n"
+         "w = w / mean(w)")
+    p(doc, "Themes:")
+    code(doc,
+         "centroid_k = normalize(mean(embeddings of members_k))\n"
+         "similarity = cosine(embedding, centroid)\n"
+         "coherence  = mean(cosine(member_i, centroid))\n"
+         "negative_pct = 100 * negative_count / size")
+    p(doc, "Complaint Radar:")
+    code(doc,
+         "current  = (end - 14d, end];  previous = (end - 28d, end - 14d]\n"
+         "growth_pct     = (current - previous) / previous * 100\n"
+         "negative_ratio = current_negatives / current_mentions\n"
+         "priority       = current_negatives * (1 + clip(growth_pct/100, 0, 3))  # NEW → factor 4\n"
+         "lift           = theme_share(segment=v) / overall_share(segment=v)")
+    p(doc, "Status gates (order): NO_DATA → NOT_A_COMPLAINT (neg ratio < 0.5) → "
+           "INSUFFICIENT_EVIDENCE → NEW → EMERGING (≥ +50%) → DECLINING (≤ −25%, or soft ≤ −15% + "
+           "falling weekly trend) → STABLE.")
+    p(doc, "Drift:")
+    code(doc,
+         "PSI = sum_i (p_cur_i - p_ref_i) * ln(p_cur_i / p_ref_i)\n"
+         "volume change = (r_cur - r_ref) / r_ref     # r = reviews/day\n"
+         "length: KS statistic D + p-value on redacted text lengths")
+    p(doc, "PSI: <0.10 none, 0.10–0.25 moderate, ≥0.25 significant. "
+           "Volume |change|: <20% / 20–50% / ≥50%. KS significant if p<0.01 and D≥0.20. "
+           "Same formulas appear in the Backend Guide and UI Guide next to each topic.")
+
     h1(doc, "8. Sentiment training data")
     p(doc, "Prepare:")
     code(doc, ".\\.venv\\Scripts\\python.exe scripts\\prepare_amazon_clothing.py")

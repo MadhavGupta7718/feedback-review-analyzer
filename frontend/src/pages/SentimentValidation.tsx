@@ -59,7 +59,7 @@ export function SentimentValidation() {
         {data.ground_truth_note} Uploaded CSVs do not get their own accuracy page.
       </div>
       <div className="kpi-grid">
-        <Kpi label="Test accuracy" value={m.headline_accuracy != null ? fmtRatio(m.headline_accuracy) : "–"} hint="argmax vs Cons_rating labels" />
+        <Kpi label="Test accuracy" value={m.headline_accuracy != null ? fmtRatio(m.headline_accuracy) : "–"} hint="argmax vs teacher text labels" />
         <Kpi label="Macro recall" value={m.macro_recall != null ? fmtRatio(m.macro_recall) : "–"} hint="mean of neg/neu/pos recall" tone="warn" />
         <Kpi label="Neg recall" value={per ? fmtRatio(per.negative.recall) : "–"} tone="bad" />
         <Kpi label="Neu recall" value={per ? fmtRatio(per.neutral.recall) : "–"} />

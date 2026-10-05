@@ -31,13 +31,15 @@ from ml.evaluation import metrics as M  # noqa: E402
 from ml.models import registry  # noqa: E402
 from ml.preprocessing.clean import model_text  # noqa: E402
 
-DATA_CSV = config.DATA_DIR / "interim" / "amazon_clothing" / "reviews.csv"
+DEFAULT_DATA_CSV = config.DATA_DIR / "interim" / "amazon_clothing" / "reviews.csv"
+TEACHER_DATA_CSV = config.DATA_DIR / "interim" / "amazon_clothing" / "reviews_teacher_roberta.csv"
 OUT_DIR = config.ARTIFACTS_DIR / "models" / "amazon_roberta_sentiment"
 REPORT = config.ARTIFACTS_DIR / "reports" / "amazon_sentiment_eval.json"
 SEED = 42
 MAX_LEN = 128
 LABELS = ("negative", "neutral", "positive")
 LAB2I = {k: i for i, k in enumerate(LABELS)}
+DATA_CSV = DEFAULT_DATA_CSV  # overridden in train() via --data
 
 
 def now() -> str:
@@ -229,8 +231,10 @@ def train(args) -> dict:
     import torch
     from transformers import get_linear_schedule_with_warmup
 
+    global DATA_CSV
+    DATA_CSV = Path(args.data) if getattr(args, "data", None) else DEFAULT_DATA_CSV
     if not DATA_CSV.exists():
-        raise SystemExit(f"Missing {DATA_CSV}; run scripts/prepare_amazon_clothing.py first")
+        raise SystemExit(f"Missing {DATA_CSV}; run prepare or teacher_label first")
 
     previous_headline = None
     if REPORT.exists():
@@ -245,7 +249,7 @@ def train(args) -> dict:
             previous_headline = None
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"device={device}", flush=True)
+    print(f"device={device} data={DATA_CSV}", flush=True)
     seed_all(SEED)
     data = load_rows(DATA_CSV)
     for k, v in data.items():
@@ -355,14 +359,20 @@ def train(args) -> dict:
 
     test_rep = evaluate(model, test_ids, test_y, pad, device)
     val_rep = evaluate(model, val_ids, val_y, pad, device)
+    is_teacher = "teacher" in DATA_CSV.name.lower() or DATA_CSV.name.endswith("teacher_roberta.csv")
+    label_mapping = (
+        "Teacher RoBERTa (cardiffnlp) text-only labels; stars ignored for training"
+        if is_teacher else
+        "1-2 negative, 3 neutral, 4-5 positive (Cons_rating)"
+    )
     report = {
         "evaluation_date_utc": now(),
-        "dataset": "Amazon clothing reviews (Review + Cons_rating)",
+        "dataset": "Amazon clothing reviews (teacher-labeled)" if is_teacher else "Amazon clothing reviews (Review + Cons_rating)",
         "source_csv": str(DATA_CSV),
         "model_base": model_base,
         "model_dir": str(OUT_DIR),
         "split": {"train": len(train_y), "val": len(val_y), "test": len(test_y), "method": "sha256(text)%100 → 80/10/10"},
-        "label_mapping": "1-2 negative, 3 neutral, 4-5 positive (Cons_rating)",
+        "label_mapping": label_mapping,
         "hyperparams": {
             "lr": lr, "batch_size": bs, "epochs": max_epochs, "max_length": MAX_LEN, "seed": SEED,
             "class_weights": weights.tolist(),
@@ -389,10 +399,19 @@ def train(args) -> dict:
             "per_class": test_rep["per_class"],
             "confusion_3x3": test_rep["confusion"],
         },
-        "ground_truth_note": "Labels from Cons_rating star ratings (weak labels). Metrics are on the held-out TEST split only.",
+        "ground_truth_note": (
+            "Labels from CardiffNLP RoBERTa teacher on review text only (stars ignored). "
+            "TEST metrics measure agreement with the teacher, not human gold labels."
+            if is_teacher else
+            "Labels from Cons_rating star ratings (weak labels). Metrics are on the held-out TEST split only."
+        ),
         "methodology": (
-            "3-class fine-tune of RoBERTa on Amazon clothing reviews with recall-focused training "
-            "(class-balanced batches, minority-boosted weights, focal loss). "
+            "Teacher-label path: cardiffnlp/twitter-roberta-base-sentiment-latest labeled all Amazon "
+            "clothing reviews from text only; student RoBERTa fine-tuned on those labels with "
+            "inverse-frequency CE. 80/10/10 deterministic text-hash split. "
+            "Macro recall = mean of per-class recall on TEST (vs teacher labels)."
+            if is_teacher else
+            "3-class fine-tune of RoBERTa on Amazon clothing reviews with Cons_rating weak labels. "
             "80/10/10 deterministic text-hash split with no train/test overlap. "
             "Macro recall = mean of per-class recall on TEST."
         ),
@@ -441,6 +460,8 @@ class _Tee:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--data", type=Path, default=TEACHER_DATA_CSV if TEACHER_DATA_CSV.exists() else DEFAULT_DATA_CSV,
+                    help="CSV with text + gt_sentiment (teacher-labeled preferred when present)")
     ap.add_argument("--lr", type=float, default=2e-5)
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--epochs", type=int, default=3)

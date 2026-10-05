@@ -199,6 +199,69 @@ Order of work in `ml/pipeline.py`:
 
 Uploads do **not** write a planted-label `sentiment_validation` payload for the accuracy page.
 
+### Formulas used in this project
+
+**Sentiment inference**
+
+```
+p_c = softmax(logits)_c
+label = argmax_c p_c
+confidence = max_c p_c
+```
+
+**Held-out evaluation (Model Validation / Amazon TEST)**
+
+```
+precision_c = TP_c / (TP_c + FP_c)
+recall_c    = TP_c / (TP_c + FN_c)
+F1_c        = 2 * precision_c * recall_c / (precision_c + recall_c)
+accuracy    = (# correct) / N
+macro_recall = (recall_neg + recall_neu + recall_pos) / 3
+```
+
+**Class weights (fine-tune CE)**
+
+```
+w_c = (N / (3 * count_c)) ** weight_power
+w = w / mean(w)
+```
+
+Selected production train uses `weight_power=1` (plain inverse-frequency).
+
+**Themes**
+
+```
+centroid_k = normalize(mean(embeddings of members_k))
+similarity = cosine(embedding, centroid)
+coherence  = mean(cosine(member_i, centroid))
+negative_pct = 100 * negative_count / size
+```
+
+**Complaint Radar** (`ml/complaints/radar.py`)
+
+```
+current  = (end - 14d, end]
+previous = (end - 28d, end - 14d]
+growth_pct     = (current - previous) / previous * 100
+negative_ratio = current_negatives / current_mentions
+priority       = current_negatives * (1 + clip(growth_pct/100, 0, 3))  # NEW → factor 4
+lift           = theme_share(segment=v) / overall_share(segment=v)
+```
+
+Status gates (order): NO_DATA → NOT_A_COMPLAINT (neg ratio < 0.5) → INSUFFICIENT_EVIDENCE → NEW → EMERGING (≥ +50%) → DECLINING (≤ −25%, or soft ≤ −15% + falling weekly trend) → STABLE.
+
+**Drift** (`ml/drift/monitor.py`)
+
+```
+PSI = Σ_i (p_cur_i − p_ref_i) * ln(p_cur_i / p_ref_i)     # ε-clip shares
+volume change = (r_cur − r_ref) / r_ref                     # r = reviews/day
+length: KS statistic D + p-value on redacted text lengths
+```
+
+PSI thresholds: &lt;0.10 none, 0.10–0.25 moderate, ≥0.25 significant. Volume: |change| &lt;20% / 20–50% / ≥50%. KS: significant if p&lt;0.01 and D≥0.20.
+
+The same formulas appear in the Backend Guide and UI Guide next to each topic (Radar, Drift, Themes, Model Validation).
+
 ---
 
 ## 8. Sentiment training data

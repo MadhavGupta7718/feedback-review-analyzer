@@ -109,6 +109,11 @@ def build() -> list[Path]:
         "version/platform breakdown, link into radar.",
         "Query string ?theme=theme_XXX auto-opens that theme.",
     ])
+    p(doc, "Formulas displayed on this page (from theme discovery + radar fields):")
+    code(doc,
+         "negative_pct = 100 * negative_count / size\n"
+         "coherence    = mean(cosine(member_embedding, theme_centroid))\n"
+         "similarity   = cosine(review_embedding, theme_centroid)   # shown on Evidence drawer")
     p(doc, "Purpose: explore what customers talk about and drill into example reviews.")
 
     h2(doc, "4.3 Complaint Radar (/radar)")
@@ -122,6 +127,13 @@ def build() -> list[Path]:
         "Soft-decline rule (gradual drop + falling weekly trend) appears in reasons when used.",
         "?issue=theme_XXX deep-links into a specific issue.",
     ])
+    p(doc, "Formulas in View why (same as backend §4.3):")
+    code(doc,
+         "windows: current = last 14d; previous = 14d before that\n"
+         "growth_pct     = (current - previous) / previous * 100\n"
+         "negative_ratio = current_negatives / current_mentions\n"
+         "priority       = current_negatives * (1 + clip(growth_pct/100, 0, 3))  # NEW → factor 4\n"
+         "lift           = theme_share(segment=v) / overall_share(segment=v)")
     p(doc, "Purpose: show which complaints are growing — not only which are largest — with full transparency.")
 
     h2(doc, "4.4 Evidence (/evidence)")
@@ -132,32 +144,77 @@ def build() -> list[Path]:
         "Row click opens a drawer: class probabilities, theme similarity, whether used as radar/theme evidence.",
         "No raw PII — only placeholders if something was redacted.",
     ])
+    p(doc, "Drawer scores use the same inference formulas as the backend:")
+    code(doc,
+         "p_c = softmax(logits)_c\n"
+         "label = argmax_c p_c ;  confidence = max_c p_c\n"
+         "theme_similarity = cosine(review_embedding, theme_centroid)")
     p(doc, "Purpose: audit trail from any claim on Overview/Themes/Radar back to real review IDs.")
 
-    h2(doc, "4.5 Sentiment Validation (/sentiment)")
-    p(doc, "API: GET /sentiment/validation — metrics for THIS database only.")
+    h2(doc, "4.5 Model Validation / Sentiment (/sentiment)")
+    p(doc, "API: GET /sentiment/validation — product path shows global Amazon clothing TEST metrics "
+           "(not per-upload accuracy). Upload batches do not invent holdout labels.")
     bullets(doc, [
-        "Explains ground_truth_note (planted labels vs star weak labels).",
-        "KPIs: 3-class accuracy, macro recall, per-class recall (neg/neu/pos), neutral prediction rate.",
-        "Overall recall card when batch_evaluation is present: sentiment / themes / radar / PII / mean.",
-        "Optional binary scoring table when non-neutral truth exists.",
-        "3×3 confusion matrix (or 2×3 if only binary truth).",
-        "Methodology text from the pipeline; model revision + device.",
-        "Does NOT show Sentiment140 / other-dataset numbers.",
+        "KPIs: 3-class accuracy, macro recall, per-class recall (neg/neu/pos), confusion matrix.",
+        "Methodology text: Amazon Cons_rating → sentiment weak labels; 80/10/10 holdout; fine-tuned RoBERTa.",
+        "Does NOT claim accuracy on an uploaded CSV.",
     ])
-    p(doc, "Purpose: prove how well sentiment (and related recalls) did on the open batch — expandable to any labelled CSV.")
+    p(doc, "Formulas for the numbers on this page:")
+    code(doc,
+         "precision_c = TP_c / (TP_c + FP_c)\n"
+         "recall_c    = TP_c / (TP_c + FN_c)\n"
+         "F1_c        = 2 * precision_c * recall_c / (precision_c + recall_c)\n"
+         "accuracy    = (# correct) / N\n"
+         "macro_recall = (recall_neg + recall_neu + recall_pos) / 3")
+    p(doc, "Purpose: prove how well the production sentiment model scores on the held-out Amazon TEST split.")
 
     h2(doc, "4.6 Data Health (/health)")
     p(doc, "API: GET /data-health, GET /drift, GET /model-info, GET /themes (for names).")
     bullets(doc, [
         "Ingestion: input rows → processed, rejects breakdown, duplicates removed, mojibake repaired.",
         "PII redactions by type (bar chart) + overall PII recall when available.",
-        "This-batch evaluation blurb: mean available recall and the four components.",
+        "Upload-batch note / model accuracy pointer (global Model Validation for Amazon holdout).",
         "Traceability audit status (PASS/FAIL) and link counts.",
-        "Drift charts: sentiment/theme PSI, volume, review length; weekly series when present.",
+        "Drift section (below) when dates exist; otherwise empty state: dates required.",
         "Model/hardware footnotes from model-info.",
     ])
     p(doc, "Purpose: data quality + monitoring, still scoped to the open DB.")
+
+    h2(doc, "4.6.1 Drift formulas shown on Data Health")
+    p(doc,
+      "The UI displays the drift report from GET /drift (computed in ml/drift/monitor.py). "
+      "It compares a reference window vs a current window (usually two consecutive 14-day periods). "
+      "If dates_available is false, show the unavailable message instead of charts.")
+    p(doc, "Overall drift badge = worst of the four statuses below (none < moderate < significant).")
+
+    p(doc, "Sentiment mix and theme mix — Population Stability Index (PSI). "
+           "Category shares are clipped with ε = 1e-4, renormalized, then:")
+    code(doc, "PSI = sum_i (p_cur_i - p_ref_i) * ln(p_cur_i / p_ref_i)")
+    p(doc, "Companion metric: Jensen–Shannon distance (base 2), shown as js_distance in [0, 1].")
+    table(doc, ["PSI", "Badge / status"], [
+        ["< 0.10", "none"],
+        ["0.10 – 0.25", "moderate"],
+        [">= 0.25", "significant"],
+    ])
+
+    p(doc, "Volume — relative change in reviews per day:")
+    code(doc,
+         "r = (#reviews) / (#days)\n"
+         "change = (r_cur - r_ref) / r_ref")
+    table(doc, ["|change|", "Status"], [
+        ["< 20%", "none"],
+        ["20% – 50%", "moderate"],
+        [">= 50%", "significant"],
+    ])
+
+    p(doc, "Review length — Kolmogorov–Smirnov (KS) on character lengths of redacted text "
+           "(statistic D and p-value):")
+    bullets(doc, [
+        "none if p >= 0.01 or D < 0.10",
+        "moderate if p < 0.01 and 0.10 <= D < 0.20",
+        "significant if p < 0.01 and D >= 0.20",
+    ])
+    p(doc, "Weekly drift series (when present) reuses the same metric family week-by-week vs baseline.")
 
     h2(doc, "4.7 Product Brief (/brief)")
     p(doc, "API: POST /product-brief with { engine: auto | qwen | template }.")

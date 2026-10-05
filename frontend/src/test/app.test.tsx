@@ -130,7 +130,7 @@ describe("Model Validation", () => {
     expect((await screen.findAllByText(acc)).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "Model Validation" })).toBeInTheDocument();
     expect(screen.getAllByText(/held-out TEST split/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Cons_rating/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/teacher/i).length).toBeGreaterThan(0);
   });
 });
 
