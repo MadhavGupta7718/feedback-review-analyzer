@@ -1,7 +1,7 @@
 {
-  "evaluation_date_utc": "2026-10-05T14:11:19.909008+00:00",
+  "evaluation_date_utc": "2026-10-05T14:54:53.127260+00:00",
   "dataset": "Amazon clothing reviews (teacher-labeled)",
-  "source_csv": "data\\interim\\amazon_clothing\\reviews_teacher_roberta.csv",
+  "source_csv": "D:\\Microsoft\\feedback-review-analyzer\\data\\interim\\amazon_clothing\\reviews_teacher_roberta.csv",
   "model_base": "cardiffnlp/twitter-roberta-base-sentiment-latest",
   "model_dir": "D:\\Microsoft\\feedback-review-analyzer\\artifacts\\models\\amazon_roberta_sentiment",
   "split": {
@@ -12,7 +12,7 @@
   },
   "label_mapping": "Teacher RoBERTa (cardiffnlp) text-only labels; stars ignored for training",
   "hyperparams": {
-    "lr": 1e-05,
+    "lr": 3e-05,
     "batch_size": 16,
     "epochs": 3,
     "max_length": 128,
@@ -33,175 +33,175 @@
     "resume": false
   },
   "device": "cuda",
-  "training_seconds": 2972.5,
+  "training_seconds": 2564.2,
   "history": [
     {
       "epoch": 1,
-      "train_loss": 0.3161,
-      "val_accuracy": 0.9424,
-      "val_macro_recall": 0.8576,
+      "train_loss": 0.3924,
+      "val_accuracy": 0.9217,
+      "val_macro_recall": 0.8417,
       "val_per_class_recall": {
-        "negative": 0.9647,
-        "neutral": 0.6219,
-        "positive": 0.9863
+        "negative": 0.9441,
+        "neutral": 0.6181,
+        "positive": 0.9629
       },
-      "elapsed_s": 895.5
+      "elapsed_s": 780.3
     },
     {
       "epoch": 2,
-      "train_loss": 0.2477,
-      "val_accuracy": 0.9487,
-      "val_macro_recall": 0.9034,
+      "train_loss": 0.2767,
+      "val_accuracy": 0.9284,
+      "val_macro_recall": 0.8793,
       "val_per_class_recall": {
-        "negative": 0.9099,
-        "neutral": 0.8223,
-        "positive": 0.9781
+        "negative": 0.8962,
+        "neutral": 0.7826,
+        "positive": 0.9591
       },
-      "elapsed_s": 2046.0
+      "elapsed_s": 1638.4
     },
     {
       "epoch": 3,
-      "train_loss": 0.1467,
-      "val_accuracy": 0.9545,
-      "val_macro_recall": 0.9051,
+      "train_loss": 0.1398,
+      "val_accuracy": 0.9393,
+      "val_macro_recall": 0.8749,
       "val_per_class_recall": {
-        "negative": 0.9635,
-        "neutral": 0.7713,
-        "positive": 0.9804
+        "negative": 0.935,
+        "neutral": 0.7146,
+        "positive": 0.9752
       },
-      "elapsed_s": 2937.8
+      "elapsed_s": 2529.8
     }
   ],
   "previous_headline": {
-    "accuracy": 0.9485,
-    "macro_recall": 0.9005,
-    "evaluation_date_utc": "2026-10-05T10:46:39.008635+00:00"
+    "accuracy": 0.9616,
+    "macro_recall": 0.9207,
+    "evaluation_date_utc": "2026-10-05T14:11:19.909008+00:00"
   },
-  "best_val_macro_recall": 0.9051,
+  "best_val_macro_recall": 0.8793,
   "metrics": {
     "val": {
       "n": 4830,
-      "accuracy": 0.9545,
+      "accuracy": 0.9284,
       "per_class": {
         "negative": {
-          "precision": 0.8951,
-          "recall": 0.9635,
-          "f1": 0.9281,
+          "precision": 0.8891,
+          "recall": 0.8962,
+          "f1": 0.8927,
           "support": 877
         },
         "neutral": {
-          "precision": 0.887,
-          "recall": 0.7713,
-          "f1": 0.8251,
+          "precision": 0.715,
+          "recall": 0.7826,
+          "f1": 0.7473,
           "support": 529
         },
         "positive": {
-          "precision": 0.9799,
-          "recall": 0.9804,
-          "f1": 0.9801,
+          "precision": 0.9753,
+          "recall": 0.9591,
+          "f1": 0.9672,
           "support": 3424
         }
       },
-      "macro_f1": 0.9111,
+      "macro_f1": 0.8691,
       "confusion": {
         "negative": {
-          "negative": 845,
-          "neutral": 22,
-          "positive": 10
+          "negative": 786,
+          "neutral": 51,
+          "positive": 40
         },
         "neutral": {
-          "negative": 62,
-          "neutral": 408,
-          "positive": 59
+          "negative": 72,
+          "neutral": 414,
+          "positive": 43
         },
         "positive": {
-          "negative": 37,
-          "neutral": 30,
-          "positive": 3357
+          "negative": 26,
+          "neutral": 114,
+          "positive": 3284
         }
       },
-      "macro_recall": 0.9051
+      "macro_recall": 0.8793
     },
     "test": {
       "n": 4812,
-      "accuracy": 0.9616,
+      "accuracy": 0.942,
       "per_class": {
         "negative": {
-          "precision": 0.9104,
-          "recall": 0.9686,
-          "f1": 0.9386,
+          "precision": 0.9004,
+          "recall": 0.9126,
+          "f1": 0.9065,
           "support": 892
         },
         "neutral": {
-          "precision": 0.8777,
-          "recall": 0.8121,
-          "f1": 0.8437,
+          "precision": 0.7618,
+          "recall": 0.8141,
+          "f1": 0.7871,
           "support": 495
         },
         "positive": {
-          "precision": 0.9871,
-          "recall": 0.9813,
-          "f1": 0.9842,
+          "precision": 0.9814,
+          "recall": 0.9682,
+          "f1": 0.9747,
           "support": 3425
         }
       },
-      "macro_f1": 0.9222,
+      "macro_f1": 0.8894,
       "confusion": {
         "negative": {
-          "negative": 864,
-          "neutral": 22,
-          "positive": 6
+          "negative": 814,
+          "neutral": 49,
+          "positive": 29
         },
         "neutral": {
-          "negative": 55,
-          "neutral": 402,
-          "positive": 38
+          "negative": 58,
+          "neutral": 403,
+          "positive": 34
         },
         "positive": {
-          "negative": 30,
-          "neutral": 34,
-          "positive": 3361
+          "negative": 32,
+          "neutral": 77,
+          "positive": 3316
         }
       },
-      "macro_recall": 0.9207
+      "macro_recall": 0.8983
     },
-    "headline_accuracy": 0.9616,
-    "headline_macro_recall": 0.9207,
+    "headline_accuracy": 0.942,
+    "headline_macro_recall": 0.8983,
     "per_class": {
       "negative": {
-        "precision": 0.9104,
-        "recall": 0.9686,
-        "f1": 0.9386,
+        "precision": 0.9004,
+        "recall": 0.9126,
+        "f1": 0.9065,
         "support": 892
       },
       "neutral": {
-        "precision": 0.8777,
-        "recall": 0.8121,
-        "f1": 0.8437,
+        "precision": 0.7618,
+        "recall": 0.8141,
+        "f1": 0.7871,
         "support": 495
       },
       "positive": {
-        "precision": 0.9871,
-        "recall": 0.9813,
-        "f1": 0.9842,
+        "precision": 0.9814,
+        "recall": 0.9682,
+        "f1": 0.9747,
         "support": 3425
       }
     },
     "confusion_3x3": {
       "negative": {
-        "negative": 864,
-        "neutral": 22,
-        "positive": 6
+        "negative": 814,
+        "neutral": 49,
+        "positive": 29
       },
       "neutral": {
-        "negative": 55,
-        "neutral": 402,
-        "positive": 38
+        "negative": 58,
+        "neutral": 403,
+        "positive": 34
       },
       "positive": {
-        "negative": 30,
-        "neutral": 34,
-        "positive": 3361
+        "negative": 32,
+        "neutral": 77,
+        "positive": 3316
       }
     }
   },

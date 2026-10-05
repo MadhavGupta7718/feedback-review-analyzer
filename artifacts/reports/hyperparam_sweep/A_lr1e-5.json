@@ -1,7 +1,7 @@
 {
   "evaluation_date_utc": "2026-10-05T14:11:19.909008+00:00",
   "dataset": "Amazon clothing reviews (teacher-labeled)",
-  "source_csv": "data\\interim\\amazon_clothing\\reviews_teacher_roberta.csv",
+  "source_csv": "D:\\Microsoft\\feedback-review-analyzer\\data\\interim\\amazon_clothing\\reviews_teacher_roberta.csv",
   "model_base": "cardiffnlp/twitter-roberta-base-sentiment-latest",
   "model_dir": "D:\\Microsoft\\feedback-review-analyzer\\artifacts\\models\\amazon_roberta_sentiment",
   "split": {

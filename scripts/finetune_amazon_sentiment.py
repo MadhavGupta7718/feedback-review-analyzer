@@ -258,7 +258,10 @@ def train(args) -> dict:
     tok, model, model_base = load_model(args.resume, device)
     print("model on device", flush=True)
 
+    global MAX_LEN
+    MAX_LEN = int(getattr(args, "max_length", MAX_LEN))
     lr, bs, max_epochs = args.lr, args.batch_size, args.epochs
+    print(f"max_length={MAX_LEN}", flush=True)
     print("tokenizing…", flush=True)
     train_ids = encode(tok, [r["text"] for r in data["train"]])
     print(f"  train tokens done ({len(train_ids)})", flush=True)
@@ -464,6 +467,7 @@ def main() -> int:
                     help="CSV with text + gt_sentiment (teacher-labeled preferred when present)")
     ap.add_argument("--lr", type=float, default=2e-5)
     ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--max-length", type=int, default=128, help="Tokenizer max_length for train/eval")
     ap.add_argument("--epochs", type=int, default=3)
     ap.add_argument("--resume", action="store_true",
                     help="Continue from artifacts/models/amazon_roberta_sentiment if present")

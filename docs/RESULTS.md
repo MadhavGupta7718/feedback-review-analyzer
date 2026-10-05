@@ -9,12 +9,14 @@ recorded in `docs/DEVELOPMENT_LOG.md`.
 
 | What | Result |
 |---|---|
-| **Product model (Amazon clothing, teacher-labeled fine-tune)** TEST accuracy / macro recall (`amazon_sentiment_eval.json`, 4,812 holdout reviews) | **0.9485** / **0.9005** |
-| Per-class TEST recall | neg **0.9047** · neu **0.8182** · pos **0.9787** |
+| **Product model (Trial A — teacher labels, lr=1e-5)** TEST accuracy / macro recall (`amazon_sentiment_eval.json`, 4,812 holdout reviews) | **0.9616** / **0.9207** |
+| Per-class TEST recall | neg **0.9686** · neu **0.8121** · pos **0.9813** |
 | Split | 38,661 train / 4,830 val / 4,812 test (`sha256(text)%100` → 80/10/10) |
 | Labels | CardiffNLP RoBERTa teacher on **text only** (stars ignored); metrics = agreement with teacher, not human gold |
 | Teacher label mix (48,303) | pos 34,620 · neg 8,612 · neu 5,071; agreement with star map **0.7788** |
-| Training | 3 epochs, bs=16, lr=2e-5; best val macro recall **0.8827** (epoch 2) |
+| Training (Trial A) | 3 epochs, bs=16, **lr=1e-5**, max_length=128; best val macro recall **0.9051** |
+| Hyperparam sweep | A (lr 1e-5) best; B/C worse; D/E stopped; see `artifacts/reports/hyperparam_sweep/` |
+| Prior teacher run (lr=2e-5 baseline before sweep) | TEST acc **0.9485** / macro **0.9005** |
 | Prior star-label model (historical) | TEST acc **0.8315** / macro recall **0.7363** |
 | Upload path | Per-batch analytics DB; **no** per-upload accuracy page |
 | Sample upload pipeline (407 reviews, Amazon fine-tune loaded) | **23.6 s** GPU; traceability PASS |
