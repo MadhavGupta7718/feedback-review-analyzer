@@ -68,6 +68,26 @@ class RadarParams:
 PRIORITY_FORMULA = "priority = current_negative_mentions x (1 + clip(growth_pct / 100, 0, {cap}))  [NEW: x (1 + {cap})]"
 
 
+def format_status_rules(p: RadarParams, min_mentions: int = 30, min_evidence: int = 3) -> str:
+    """Full status rules with numeric thresholds inlined per status (no separate param cards)."""
+    neg = p.min_negative_ratio
+    neg_pct = f"{neg * 100:g}"
+    return (
+        "evaluated in this order\n"
+        "  NO_DATA                current == 0 and previous == 0\n"
+        f"  NOT_A_COMPLAINT        negative_ratio (current, or whole batch if current is empty)"
+        f" < {neg:g} ({neg_pct}%)\n"
+        f"  INSUFFICIENT_EVIDENCE  current < {min_mentions}"
+        f"  or  negative evidence reviews < {min_evidence}\n"
+        f"  NEW                    previous == 0 and current >= {min_mentions}\n"
+        f"  EMERGING               growth_pct >= {p.min_growth_pct:g}%\n"
+        f"  DECLINING              growth_pct <= -{p.decline_pct:g}%\n"
+        f"                         OR (growth_pct <= -{p.soft_decline_pct:g}%"
+        f" AND weekly trend is falling AND previous >= {min_mentions})\n"
+        "  STABLE                 otherwise"
+    )
+
+
 def growth_pct(current: int, previous: int) -> float | None:
     """Safe growth: None when previous == 0 (caller decides NEW vs NO_DATA). Never inf / NaN."""
     if current < 0 or previous < 0:
@@ -153,7 +173,9 @@ def compute_radar(reviews: list[dict], themes: list[dict], params: RadarParams |
     valid = [r for r in reviews if isinstance(r.get("created_at"), datetime)]
     malformed = len(reviews) - len(valid)
     if not valid:
-        return {"params": asdict(p), "formula": PRIORITY_FORMULA.format(cap=p.max_growth_bonus), "items": [],
+        return {"params": asdict(p), "formula": PRIORITY_FORMULA.format(cap=p.max_growth_bonus),
+                "rules": format_status_rules(p, p.min_current_mentions, p.min_evidence_reviews),
+                "items": [],
                 "window": None, "malformed_timestamps": malformed, "note": "no reviews with valid timestamps"}
     end = as_of or max(r["created_at"] for r in valid)
     cur_start = end - timedelta(days=p.window_days)
@@ -278,7 +300,7 @@ def compute_radar(reviews: list[dict], themes: list[dict], params: RadarParams |
     return {
         "params": params_out,
         "formula": PRIORITY_FORMULA.format(cap=p.max_growth_bonus),
-        "rules": __doc__.split("Status rules")[1].split("Priority")[0].strip(),
+        "rules": format_status_rules(p, min_mentions, min_evidence),
         "window": {"current_start": cur_start.isoformat(), "end": end.isoformat(), "previous_start": prev_start.isoformat(),
                    "current_reviews": len(in_cur), "previous_reviews": len(in_prev), "has_previous_window": has_previous_window},
         "malformed_timestamps": malformed,

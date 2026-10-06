@@ -15,6 +15,28 @@ const FILTERS: { label: string; statuses: RadarStatus[] | null }[] = [
   { label: "All", statuses: null },
 ];
 
+/** Full status list with thresholds per status — not the separate param cards. */
+function classificationRulesText(params: Record<string, number> | null | undefined): string {
+  const mentions = params?.effective_min_current_mentions ?? params?.min_current_mentions ?? 30;
+  const evidence = params?.effective_min_evidence_reviews ?? params?.min_evidence_reviews ?? 3;
+  const neg = params?.min_negative_ratio ?? 0.5;
+  const grow = params?.min_growth_pct ?? 50;
+  const decline = params?.decline_pct ?? 25;
+  const soft = params?.soft_decline_pct ?? 15;
+  const negPct = Math.round(Number(neg) * 100);
+  return [
+    "evaluated in this order",
+    "  NO_DATA                current == 0 and previous == 0",
+    `  NOT_A_COMPLAINT        negative_ratio (current, or whole batch if current is empty) < ${neg} (${negPct}%)`,
+    `  INSUFFICIENT_EVIDENCE  current < ${mentions}  or  negative evidence reviews < ${evidence}`,
+    `  NEW                    previous == 0 and current >= ${mentions}`,
+    `  EMERGING               growth_pct >= ${grow}%`,
+    `  DECLINING              growth_pct <= -${decline}%`,
+    `                         OR (growth_pct <= -${soft}% AND weekly trend is falling AND previous >= ${mentions})`,
+    "  STABLE                 otherwise",
+  ].join("\n");
+}
+
 export function Radar() {
   const { data, error, loading, reload } = useApi(() => api.issues());
   const [params, setParams] = useSearchParams();
@@ -60,9 +82,6 @@ export function Radar() {
             {f.label}
           </button>
         ))}
-        <span className="muted small formula" title="Priority formula">
-          {data.formula}
-        </span>
       </div>
       <div className={selected ? "split" : ""}>
         <div className="table-wrap">
@@ -103,9 +122,9 @@ export function Radar() {
         </div>
         {selected && <WhyPanel themeId={selected} onClose={() => setParams({})} />}
       </div>
-      {data.rules && (
+      {(data.rules || data.params) && (
         <Card title="Classification rules" subtitle="Evaluated in order; the first matching rule sets the status.">
-          <pre className="pre">{data.rules}</pre>
+          <pre className="pre">{classificationRulesText(data.params)}</pre>
         </Card>
       )}
     </div>
