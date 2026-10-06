@@ -277,22 +277,39 @@ def data_health():
 
 @app.get("/model-info")
 def model_info():
+    from ml.brief.service import qwen_status
+
     try:
         with db.connect() as con:
             models = {r["model"]: json.loads(r["data"]) for r in con.execute("SELECT model, data FROM model_versions")}
             mv = db.report(con, "model_verification") or {}
             hw = db.report(con, "hardware")
             perf = db.report(con, "performance") or {}
+            qb = db.report(con, "qwen_brief")
     except db.DatabaseUnavailable:
-        models, mv, hw, perf = {}, {}, None, {}
+        models, mv, hw, perf, qb = {}, {}, None, {}, None
     ver = {name: {k: v for k, v in rec.items() if k in ("state", "revision", "disk_gb", "load_seconds", "checks", "plan",
                                                          "gpu_memory_allocated_gb", "generation_seconds", "embedding_dim", "similarity")}
            for name, rec in mv.get("models", {}).items()}
     return {"pipeline_models": models, "verification": ver, "verification_status": mv.get("status"),
             "verification_offline": mv.get("network_blocked"), "hardware_at_pipeline_run": hw,
             "performance": {k: v for k, v in perf.items() if k != "embedding"},
+            "brief_engine": qwen_status(), "precomputed_qwen_brief": bool(qb),
             "amazon_model_installed": (config.AMAZON_SENTIMENT_DIR / "config.json").exists(),
             "amazon_eval_present": config.AMAZON_SENTIMENT_EVAL.exists()}
+
+
+class BriefRequest(BaseModel):
+    engine: Literal["auto", "qwen", "template"] = Field(default="auto")
+
+
+@app.post("/product-brief")
+def product_brief(req: BriefRequest):
+    from ml.brief.service import generate_brief
+
+    if not db.db_path().exists():
+        raise db.DatabaseUnavailable()
+    return generate_brief(db.db_path(), req.engine)
 
 
 @app.get("/batches")

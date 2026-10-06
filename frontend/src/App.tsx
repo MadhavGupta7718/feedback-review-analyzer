@@ -9,6 +9,7 @@ const Evidence = lazy(() => import("./pages/Evidence").then((m) => ({ default: m
 const SentimentValidation = lazy(() => import("./pages/SentimentValidation").then((m) => ({ default: m.SentimentValidation })));
 const DataHealth = lazy(() => import("./pages/DataHealth").then((m) => ({ default: m.DataHealth })));
 const Batches = lazy(() => import("./pages/Batches").then((m) => ({ default: m.Batches })));
+const ProductBrief = lazy(() => import("./pages/ProductBrief").then((m) => ({ default: m.ProductBrief })));
 
 export function App() {
   return (
@@ -21,6 +22,7 @@ export function App() {
         <Route path="sentiment" element={<SentimentValidation />} />
         <Route path="health" element={<DataHealth />} />
         <Route path="batches" element={<Batches />} />
+        <Route path="brief" element={<ProductBrief />} />
         <Route path="*" element={<p className="page">Page not found.</p>} />
       </Route>
     </Routes>

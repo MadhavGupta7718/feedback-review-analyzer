@@ -6,6 +6,7 @@ import type {
   IssuesResponse,
   MetricsResponse,
   ModelInfo,
+  ProductBrief,
   Review,
   ReviewDetail,
   SentimentValidation,
@@ -101,6 +102,8 @@ export const api = {
   drift: () => request<DriftResponse>("/drift"),
   dataHealth: () => request<DataHealth>("/data-health"),
   modelInfo: () => request<ModelInfo>("/model-info"),
+  productBrief: (engine: "auto" | "qwen" | "template") =>
+    request<ProductBrief>("/product-brief", { method: "POST", body: JSON.stringify({ engine }) }),
   batches: () => request<{ batches: BatchInfo[]; active_db: string | null }>("/batches"),
   uploadBatch: async (file: File) => {
     const body = new FormData();

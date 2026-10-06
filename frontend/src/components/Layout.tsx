@@ -12,6 +12,7 @@ const NAV = [
   { to: "/radar", label: "Complaint Radar" },
   { to: "/evidence", label: "Evidence" },
   { to: "/health", label: "Data Health" },
+  { to: "/brief", label: "Product Brief" },
 ];
 
 export function Layout() {
