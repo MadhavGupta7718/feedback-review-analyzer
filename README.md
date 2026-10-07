@@ -47,7 +47,7 @@ Optional: **Product Brief** (Qwen2.5-3B or deterministic template) turns analyti
 
 ---
 
-## Architecture (short)
+## Architecture
 
 | Layer | Role |
 |-------|------|
@@ -88,7 +88,7 @@ Split: deterministic **80 / 10 / 10** by `sha256(text) % 100` (no random leakage
 
 Source of truth: `artifacts/reports/amazon_sentiment_eval.json` (Model Validation page).
 
-| Metric | Trial A (teacher labels, selected) |
+| Metric | Trial D (teacher labels, selected) |
 |--------|-------------------------------------|
 | TEST accuracy | **0.9616** |
 | TEST macro recall | **0.9207** |
